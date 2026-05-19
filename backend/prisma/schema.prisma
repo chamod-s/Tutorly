@@ -1,0 +1,461 @@
+// ─────────────────────────────────────────────────────────────
+//  Prisma Schema — TUTORLY Platform
+//  PostgreSQL + Prisma ORM
+// ─────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum CourseType {
+  SUBSCRIPTION
+  ONE_TIME
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  CHARGEBACK
+}
+
+enum PaymentType {
+  ENROLLMENT
+  SUBSCRIPTION
+  VIDEO_PURCHASE
+}
+
+enum StreamStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum TeacherApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+enum NotificationType {
+  ENROLLMENT
+  PAYMENT
+  STREAM_START
+  COURSE_UPDATE
+  MESSAGE
+  SYSTEM
+  SUBSCRIPTION_EXPIRY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+// ─── User ─────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(STUDENT)
+  firstName    String
+  lastName     String
+  avatar       String?
+  phone        String?
+  isActive     Boolean   @default(true)
+  isVerified   Boolean   @default(false)
+  lastLoginAt  DateTime?
+  otpCode      String?
+  otpExpiresAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  studentProfile  StudentProfile?
+  teacherProfile  TeacherProfile?
+  enrollments     Enrollment[]
+  subscriptions   Subscription[]
+  payments        Payment[]
+  sentMessages    Message[]             @relation("MessageSender")
+  notifications   Notification[]
+  refreshTokens   RefreshToken[]
+  analyticsEvents AnalyticsEvent[]
+  liveStreams     LiveStream[]
+  chatRooms       ChatRoomParticipant[]
+  reviews         Review[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ─── Teacher Profile ─────────────────────────────────────────
+
+model TeacherProfile {
+  id              String                 @id @default(uuid())
+  userId          String                 @unique
+  bio             String?                @db.Text
+  subjects        String[]
+  qualifications  String[]
+  experience      Int                    @default(0)
+  rating          Float                  @default(0)
+  totalStudents   Int                    @default(0)
+  totalCourses    Int                    @default(0)
+  totalEarnings   Float                  @default(0)
+  isVerified      Boolean                @default(false)
+  profileImage    String?
+  documents       String[]
+  approvalStatus  TeacherApprovalStatus  @default(PENDING)
+  rejectionReason String?                @db.Text
+  submittedAt     DateTime?
+  bankAccountName String?
+  bankAccountNo   String?
+  bankName        String?
+  bankBranch      String?
+  socialLinks     Json?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courses Course[]
+
+  @@map("teacher_profiles")
+}
+
+// ─── Student Profile ─────────────────────────────────────────
+
+model StudentProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  grade           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("student_profiles")
+}
+
+// ─── Course ───────────────────────────────────────────────────
+
+model Course {
+  id            String      @id @default(uuid())
+  title         String
+  description   String      @db.Text
+  shortDesc     String?
+  thumbnail     String?
+  previewVideo  String?
+  teacherId     String
+  price         Float       @default(0)
+  monthlyPrice  Float?
+  type          CourseType  @default(ONE_TIME)
+  level         CourseLevel @default(BEGINNER)
+  language      String      @default("English")
+  tags          String[]
+  category      String?
+  isPublished   Boolean     @default(false)
+  isFeatured    Boolean     @default(false)
+  totalDuration Int         @default(0)
+  totalLessons  Int         @default(0)
+  rating        Float       @default(0)
+  totalRatings  Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  teacher       TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  lessons       Lesson[]
+  enrollments   Enrollment[]
+  subscriptions Subscription[]
+  chatRoom      ChatRoom?
+  reviews       Review[]
+
+  @@index([teacherId])
+  @@index([type])
+  @@index([isPublished])
+  @@map("courses")
+}
+
+// ─── Lesson ───────────────────────────────────────────────────
+
+model Lesson {
+  id           String   @id @default(uuid())
+  courseId     String
+  title        String
+  description  String?  @db.Text
+  videoUrl     String?
+  hlsUrl       String?
+  thumbnailUrl String?
+  duration     Int      @default(0)
+  order        Int      @default(0)
+  isFree       Boolean  @default(false)
+  isPublished  Boolean  @default(false)
+  resources    Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@index([order])
+  @@map("lessons")
+}
+
+// ─── Review ───────────────────────────────────────────────────
+
+model Review {
+  id        String   @id @default(uuid())
+  courseId  String
+  studentId String
+  rating    Int // 1 to 5
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId]) // A student can review a course only once
+  @@index([courseId])
+  @@index([studentId])
+  @@map("reviews")
+}
+
+// ─── Enrollment ───────────────────────────────────────────────
+
+model Enrollment {
+  id         String           @id @default(uuid())
+  studentId  String
+  courseId   String
+  status     EnrollmentStatus @default(ACTIVE)
+  paymentId  String?
+  enrolledAt DateTime         @default(now())
+  expiresAt  DateTime?
+  updatedAt  DateTime         @updatedAt
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId])
+  @@index([studentId])
+  @@index([courseId])
+  @@map("enrollments")
+}
+
+// ─── Subscription ─────────────────────────────────────────────
+
+model Subscription {
+  id             String             @id @default(uuid())
+  studentId      String
+  courseId       String
+  status         SubscriptionStatus @default(ACTIVE)
+  payhereOrderId String?            @unique
+  payhereSubId   String?
+  amount         Float
+  currency       String             @default("LKR")
+  startedAt      DateTime           @default(now())
+  renewsAt       DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([courseId])
+  @@map("subscriptions")
+}
+
+// ─── Payment ──────────────────────────────────────────────────
+
+model Payment {
+  id             String        @id @default(uuid())
+  userId         String
+  amount         Float
+  currency       String        @default("LKR")
+  payhereOrderId String?       @unique
+  payhereRef     String?
+  status         PaymentStatus @default(PENDING)
+  type           PaymentType
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ─── Live Stream ──────────────────────────────────────────────
+
+model LiveStream {
+  id          String       @id @default(uuid())
+  teacherId   String
+  title       String
+  description String?      @db.Text
+  thumbnail   String?
+  hlsUrl      String?
+  rtmpKey     String?      @unique @default(uuid())
+  status      StreamStatus @default(SCHEDULED)
+  isPublic    Boolean      @default(true)
+  price       Float        @default(0)
+  viewerCount Int          @default(0)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  teacher  User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  chatRoom ChatRoom?
+
+  @@index([teacherId])
+  @@index([status])
+  @@map("live_streams")
+}
+
+// ─── Chat Room ────────────────────────────────────────────────
+
+model ChatRoom {
+  id        String   @id @default(uuid())
+  courseId  String?  @unique
+  streamId  String?  @unique
+  name      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  course       Course?               @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  stream       LiveStream?           @relation(fields: [streamId], references: [id], onDelete: SetNull)
+  messages     Message[]
+  participants ChatRoomParticipant[]
+
+  @@map("chat_rooms")
+}
+
+model ChatRoomParticipant {
+  chatRoomId String
+  userId     String
+  joinedAt   DateTime @default(now())
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([chatRoomId, userId])
+  @@map("chat_room_participants")
+}
+
+// ─── Message ──────────────────────────────────────────────────
+
+model Message {
+  id         String      @id @default(uuid())
+  chatRoomId String
+  senderId   String
+  content    String      @db.Text
+  type       MessageType @default(TEXT)
+  fileUrl    String?
+  isEdited   Boolean     @default(false)
+  isDeleted  Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender   User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([chatRoomId])
+  @@index([senderId])
+  @@map("messages")
+}
+
+// ─── Notification ─────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  payload   Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// ─── Refresh Token ────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ─── Analytics Event ──────────────────────────────────────────
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String?
+  eventType String
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
