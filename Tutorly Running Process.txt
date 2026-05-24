@@ -1,0 +1,86 @@
+Tutorly Running Process
+
+This application is split into two main components:
+
+Backend: A Node.js + Express + TypeScript + PostgreSQL backend using Prisma ORM.
+Desktop: An Electron + Vite + React desktop application.
+Prerequisites
+Before starting, ensure you have:
+
+Node.js (version >= 18.0.0) installed.
+PostgreSQL running locally or accessible via the connection string in your environment.
+Step 1: Set Up & Run the Backend
+Navigate to the backend directory:
+
+bash
+cd backend
+Install backend dependencies:
+
+bash
+npm install
+Configure Environment Variables: A configuration file is already set up at 
+
+backend/.env
+. Ensure your PostgreSQL server credentials match the connection string configured there:
+
+env
+DATABASE_URL="postgresql://postgres:CJS@12345@localhost:5432/tutorly?schema=public"
+Initialize the Database (Prisma): Generate the Prisma Client and run migrations to create the database schema defined in 
+
+backend/prisma/schema.prisma
+:
+
+bash
+# Generate Prisma client
+npm run prisma:generate
+# Apply migrations to your database
+npm run prisma:migrate
+Seed the Database: Populate the database with sample courses and test accounts by running the seed script defined in 
+
+backend/prisma/seed.ts
+:
+
+bash
+npm run prisma:seed
+Start the Backend Dev Server: Start the Express server on port 5000:
+
+bash
+npm run dev
+Step 2: Set Up & Run the Desktop App
+Open a new terminal window/tab and navigate to the desktop directory:
+
+bash
+cd desktop
+Install desktop dependencies:
+
+bash
+npm install
+Start the Electron app in development mode: This starts the Vite preview server and launches the Electron application window:
+
+bash
+npm run dev
+Default Test Login Credentials
+Once the database is seeded, you can log in to the desktop application using any of the following accounts:
+
+Role	Email	Password
+Admin	admin@tutorly.lk	Admin@123
+Teacher	teacher@tutorly.lk	Teacher@123
+Student	student@tutorly.lk	Student@123
+Summary of Work
+Explored the project structure and identified the backend and desktop components.
+Analyzed 
+
+backend/package.json
+ and 
+
+desktop/package.json
+ to retrieve the proper run and build scripts.
+Examined 
+
+backend/.env
+ to check database configuration and connectivity.
+Checked 
+
+backend/prisma/seed.ts
+ to find setup roles and default credentials.
+Provided step-by-step instructions for installing dependencies, migrating/seeding the database, and running both projects.
