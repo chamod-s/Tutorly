@@ -22,23 +22,21 @@ const Sidebar: React.FC = () => {
       case 'ADMIN':
         return [
           { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={20} /> },
-          { name: 'Users', path: '/admin/users', icon: <Users size={20} /> },
-          { name: 'Courses', path: '/admin/courses', icon: <BookOpen size={20} /> },
-          { name: 'Payments', path: '/admin/payments', icon: <CreditCard size={20} /> },
+          { name: 'Teacher Approvals', path: '/admin/teachers', icon: <Users size={20} /> },
         ];
       case 'TEACHER':
         return [
           { name: 'Dashboard', path: '/teacher', icon: <LayoutDashboard size={20} /> },
-          { name: 'My Courses', path: '/teacher/courses', icon: <BookOpen size={20} /> },
-          { name: 'Live Streams', path: '/teacher/streams', icon: <Video size={20} /> },
-          { name: 'Students', path: '/teacher/students', icon: <Users size={20} /> },
+          { name: 'My Classes', path: '/teacher/classes', icon: <BookOpen size={20} /> },
+          { name: 'Live Streams', path: '/teacher/live', icon: <Video size={20} /> },
+          { name: 'Verification Apply', path: '/teacher/apply', icon: <GraduationCap size={20} /> },
         ];
       case 'STUDENT':
       default:
         return [
           { name: 'Dashboard', path: '/student', icon: <LayoutDashboard size={20} /> },
-          { name: 'My Learning', path: '/student/courses', icon: <BookOpen size={20} /> },
-          { name: 'Live Classes', path: '/student/live', icon: <Video size={20} /> },
+          { name: 'Browse Classes', path: '/student/classes', icon: <BookOpen size={20} /> },
+          { name: 'Payment History', path: '/student/payments', icon: <CreditCard size={20} /> },
         ];
     }
   };

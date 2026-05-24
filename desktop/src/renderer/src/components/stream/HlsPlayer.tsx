@@ -21,6 +21,8 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, isLive = false }) => {
     const video = videoRef.current;
     if (!video || !src) return;
 
+    let cleanup: (() => void) | undefined;
+
     if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
@@ -43,12 +45,14 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, isLive = false }) => {
       });
 
       hlsRef.current = hls;
-      return () => { hls.destroy(); };
+      cleanup = () => { hls.destroy(); };
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = src;
       video.play().catch(() => {});
       setStatus('playing');
     }
+
+    return cleanup;
   }, [src, isLive]);
 
   const setQualityLevel = (idx: number) => {

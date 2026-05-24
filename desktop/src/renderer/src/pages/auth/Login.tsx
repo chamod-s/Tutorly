@@ -37,6 +37,7 @@ const Login: React.FC = () => {
       else navigate('/student');
       
     } catch (err: unknown) {
+      console.error('Login error details:', err);
       if (err instanceof AxiosError && err.response) {
         setError(err.response.data.message || 'Invalid email or password');
       } else {

@@ -57,7 +57,7 @@ const LiveWatchPage: React.FC = () => {
   useEffect(() => {
     if (!streamId || !user) return;
 
-    const socket = io('http://localhost:5000', {
+    const socket = io('http://127.0.0.1:5000', {
       auth: { token: useAuthStore.getState().token },
       transports: ['websocket'],
     });

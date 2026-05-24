@@ -29,8 +29,8 @@ export interface RegisterPayload {
 
 export const authService = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/auth/login', { email, password });
-    return response.data;
+    const response = await apiClient.post<{ data: LoginResponse }>('/auth/login', { email, password });
+    return response.data.data;
   },
 
   register: async (data: RegisterPayload): Promise<{ message: string }> => {
@@ -39,8 +39,8 @@ export const authService = {
   },
 
   verifyAccount: async (email: string, code: string): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/auth/verify-account', { email, code });
-    return response.data;
+    const response = await apiClient.post<{ data: LoginResponse }>('/auth/verify-account', { email, code });
+    return response.data.data;
   },
 
   getProfile: async () => {

@@ -334,8 +334,9 @@ model LiveStream {
   title       String
   description String?      @db.Text
   thumbnail   String?
-  hlsUrl      String?
-  rtmpKey     String?      @unique @default(uuid())
+  hlsUrl       String?
+  recordingUrl String?
+  rtmpKey      String?      @unique @default(uuid())
   status      StreamStatus @default(SCHEDULED)
   isPublic    Boolean      @default(true)
   price       Float        @default(0)
