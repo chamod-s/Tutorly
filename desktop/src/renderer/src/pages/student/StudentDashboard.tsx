@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { apiClient } from '../../api/client';
 import HlsPlayer from '../../components/stream/HlsPlayer';
@@ -512,7 +512,13 @@ const CourseDetailView: React.FC<CourseDetailViewProps> = ({ course, onBack }) =
 // ─── Main Dashboard ───────────────────────────────────────────
 const StudentDashboard: React.FC = () => {
   const user = useAuthStore((s) => s.user);
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as Tab;
+  const activeTab = (tabParam && ['overview', 'classes', 'videos', 'payments', 'profile'].includes(tabParam)) ? tabParam : 'overview';
+
+  const setActiveTab = (newTab: Tab) => {
+    setSearchParams({ tab: newTab });
+  };
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [allCourses, setAllCourses] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -565,6 +571,10 @@ const StudentDashboard: React.FC = () => {
       fetchDashboardData();
     }
   }, [user]);
+
+  useEffect(() => {
+    setSelectedCourse(null);
+  }, [activeTab]);
 
   const onNavigateToPayment = (course: any) => {
     navigate('/student/payment', {

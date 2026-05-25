@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Bell, Search, CheckCheck, Loader2, Clock } from 'lucide-react';
 import { apiClient } from '../../api/client';
@@ -13,6 +14,7 @@ interface NotificationItem {
 }
 
 const Header: React.FC = () => {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -75,14 +77,16 @@ const Header: React.FC = () => {
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-20">
       <div className="flex items-center">
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <input 
-            type="text" 
-            placeholder="Search..." 
-            className="pl-10 pr-4 py-2 bg-slate-100 border-transparent rounded-lg text-sm focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all w-64 outline-none"
-          />
-        </div>
+        {user?.role !== 'STUDENT' && (
+          <div className="relative hidden md:block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              className="pl-10 pr-4 py-2 bg-slate-100 border-transparent rounded-lg text-sm focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all w-64 outline-none"
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex items-center space-x-4">
@@ -142,7 +146,14 @@ const Header: React.FC = () => {
         
         <div className="h-8 w-px bg-slate-200 mx-2"></div>
         
-        <div className="flex items-center cursor-pointer group">
+        <div 
+          onClick={() => {
+            if (user?.role === 'STUDENT') {
+              navigate('/student?tab=profile');
+            }
+          }}
+          className="flex items-center cursor-pointer group"
+        >
           <div className="text-right mr-3 hidden sm:block">
             <p className="text-sm font-semibold text-slate-700 leading-tight group-hover:text-primary-600 transition-colors">
               {user?.firstName} {user?.lastName}
