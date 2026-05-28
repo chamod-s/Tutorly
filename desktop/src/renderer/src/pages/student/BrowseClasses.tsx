@@ -1,36 +1,10 @@
-import React, { useState } from 'react';
-import { Search, BookOpen, Star, Users, Clock, Globe, Filter, CheckCircle2, Tag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Search, BookOpen, Star, Users, Clock, Globe, Filter, CheckCircle2, Tag, Loader2 } from 'lucide-react';
+import { apiClient } from '../../api/client';
 
 type Level = 'ALL' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 type CourseType = 'ALL' | 'SUBSCRIPTION' | 'ONE_TIME';
-
-interface Course {
-  id: string;
-  title: string;
-  shortDesc: string;
-  teacher: string;
-  price: number;
-  monthlyPrice?: number;
-  type: 'SUBSCRIPTION' | 'ONE_TIME';
-  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
-  language: string;
-  category: string;
-  tags: string[];
-  rating: number;
-  students: number;
-  lessons: number;
-  isEnrolled: boolean;
-  schedules: string[];
-}
-
-const COURSES: Course[] = [
-  { id: '1', title: 'A/L Mathematics Complete Course', shortDesc: 'Master A/L Mathematics with expert guidance', teacher: 'Nimesh Perera', price: 4500, monthlyPrice: 4500, type: 'SUBSCRIPTION', level: 'ADVANCED', language: 'Sinhala', category: 'Mathematics', tags: ['a-level', 'maths', 'exam-prep'], rating: 4.9, students: 312, lessons: 48, isEnrolled: true, schedules: ['Mon 6:00 PM', 'Wed 6:00 PM', 'Sat 9:00 AM'] },
-  { id: '2', title: 'Python Programming Zero to Hero', shortDesc: 'Learn Python with hands-on projects', teacher: 'Nimesh Perera', price: 2990, type: 'ONE_TIME', level: 'BEGINNER', language: 'English', category: 'Programming', tags: ['python', 'programming', 'beginner'], rating: 4.7, students: 187, lessons: 36, isEnrolled: false, schedules: ['Tue 5:00 PM', 'Thu 5:00 PM'] },
-  { id: '3', title: 'O/L Physics Mastery', shortDesc: 'Complete O/L physics with past papers', teacher: 'Saman Silva', price: 3200, monthlyPrice: 3200, type: 'SUBSCRIPTION', level: 'INTERMEDIATE', language: 'Sinhala', category: 'Science', tags: ['o-level', 'physics', 'science'], rating: 4.6, students: 94, lessons: 28, isEnrolled: false, schedules: ['Sat 8:00 AM', 'Sun 10:00 AM'] },
-  { id: '4', title: 'English Communication Skills', shortDesc: 'Speak and write English confidently', teacher: 'Priya Wijesinghe', price: 1800, type: 'ONE_TIME', level: 'BEGINNER', language: 'English', category: 'Languages', tags: ['english', 'communication'], rating: 4.8, students: 256, lessons: 24, isEnrolled: false, schedules: ['Wed 4:00 PM', 'Fri 4:00 PM'] },
-  { id: '5', title: 'Chemistry for A/L', shortDesc: 'Organic & Inorganic chemistry simplified', teacher: 'Sachith Bandara', price: 4200, monthlyPrice: 4200, type: 'SUBSCRIPTION', level: 'ADVANCED', language: 'Sinhala', category: 'Science', tags: ['a-level', 'chemistry'], rating: 4.5, students: 78, lessons: 42, isEnrolled: false, schedules: ['Mon 7:00 PM', 'Thu 7:00 PM'] },
-  { id: '6', title: 'Graphic Design Fundamentals', shortDesc: 'Design stunning visuals with Adobe tools', teacher: 'Dilani Perera', price: 3500, type: 'ONE_TIME', level: 'BEGINNER', language: 'English', category: 'Design', tags: ['design', 'adobe', 'creative'], rating: 4.4, students: 134, lessons: 32, isEnrolled: false, schedules: [] },
-];
 
 const CATEGORIES = ['All', 'Mathematics', 'Science', 'Programming', 'Languages', 'Design'];
 const LEVEL_COLORS: Record<string, string> = {
@@ -47,8 +21,16 @@ const Stars: React.FC<{ rating: number }> = ({ rating }) => (
 );
 
 // ── Course Card ───────────────────────────────────────────────
-const CourseCard: React.FC<{ course: Course; onEnroll: (id: string) => void }> = ({ course, onEnroll }) => {
+const CourseCard: React.FC<{ course: any; onEnroll: (course: any) => void }> = ({ course, onEnroll }) => {
   const [showDetail, setShowDetail] = useState(false);
+  const navigate = useNavigate();
+
+  const teacherName = course.teacher
+    ? `${course.teacher.user?.firstName} ${course.teacher.user?.lastName}`
+    : 'Unknown Instructor';
+
+  const studentsCount = course._count?.enrollments ?? 0;
+  const lessonsCount = course._count?.lessons ?? 0;
 
   return (
     <>
@@ -63,27 +45,19 @@ const CourseCard: React.FC<{ course: Course; onEnroll: (id: string) => void }> =
                 <h2 className="text-xl font-bold text-slate-900 leading-tight">{course.title}</h2>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${LEVEL_COLORS[course.level]}`}>{course.level}</span>
               </div>
-              <p className="text-slate-600 text-sm leading-relaxed">{course.shortDesc}</p>
+              <p className="text-slate-600 text-sm leading-relaxed">{course.description || course.shortDesc}</p>
               <div className="flex gap-4 text-sm text-slate-600 flex-wrap">
                 <Stars rating={course.rating} />
-                <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {course.students} students</span>
-                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {course.lessons} lessons</span>
+                <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {studentsCount} students</span>
+                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {lessonsCount} lessons</span>
                 <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" /> {course.language}</span>
               </div>
               <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
-                <p><span className="text-slate-500">Instructor:</span> <span className="font-medium text-slate-900">{course.teacher}</span></p>
-                <p><span className="text-slate-500">Category:</span> <span className="font-medium text-slate-900">{course.category}</span></p>
+                <p><span className="text-slate-500">Instructor:</span> <span className="font-medium text-slate-900">{teacherName}</span></p>
+                <p><span className="text-slate-500">Category:</span> <span className="font-medium text-slate-900">{course.category || 'General'}</span></p>
                 <p><span className="text-slate-500">Type:</span> <span className="font-medium text-slate-900">{course.type === 'SUBSCRIPTION' ? 'Monthly Subscription' : 'One-Time Payment'}</span></p>
               </div>
-              {course.schedules.length > 0 && (
-                <div>
-                  <p className="text-sm font-semibold text-slate-700 mb-2">Class Schedule</p>
-                  <div className="flex flex-wrap gap-2">
-                    {course.schedules.map((s, i) => <span key={i} className="px-3 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-lg border border-teal-100">{s}</span>)}
-                  </div>
-                </div>
-              )}
-              {course.tags.length > 0 && (
+              {course.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {course.tags.map((t, i) => <span key={i} className="px-2.5 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full">{t}</span>)}
                 </div>
@@ -91,9 +65,17 @@ const CourseCard: React.FC<{ course: Course; onEnroll: (id: string) => void }> =
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowDetail(false)} className="flex-1 border border-slate-200 py-2.5 rounded-xl text-sm hover:bg-slate-50">Close</button>
                 {course.isEnrolled ? (
-                  <button className="flex-1 bg-slate-800 text-white py-2.5 rounded-xl text-sm font-semibold">Continue Learning →</button>
+                  <button 
+                    onClick={() => {
+                      setShowDetail(false);
+                      navigate('/student?tab=classes');
+                    }} 
+                    className="flex-1 bg-slate-800 text-white py-2.5 rounded-xl text-sm font-semibold"
+                  >
+                    Continue Learning →
+                  </button>
                 ) : (
-                  <button onClick={() => { onEnroll(course.id); setShowDetail(false); }}
+                  <button onClick={() => { onEnroll(course); setShowDetail(false); }}
                     className="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
                     Enroll · Rs. {course.price.toLocaleString()}
                   </button>
@@ -116,11 +98,11 @@ const CourseCard: React.FC<{ course: Course; onEnroll: (id: string) => void }> =
         </div>
         <div className="p-4 flex flex-col flex-1">
           <h3 className="font-bold text-slate-900 leading-snug mb-1 line-clamp-2 group-hover:text-teal-700 transition-colors">{course.title}</h3>
-          <p className="text-xs text-slate-500 mb-2">by {course.teacher}</p>
-          <p className="text-xs text-slate-600 mb-3 line-clamp-2">{course.shortDesc}</p>
+          <p className="text-xs text-slate-500 mb-2">by {teacherName}</p>
+          <p className="text-xs text-slate-600 mb-3 line-clamp-2">{course.shortDesc || course.description}</p>
           <div className="flex items-center gap-3 text-xs text-slate-500 mb-3 flex-wrap">
             <Stars rating={course.rating} />
-            <span className="flex items-center gap-1"><Users className="w-3 h-3" />{course.students}</span>
+            <span className="flex items-center gap-1"><Users className="w-3 h-3" />{studentsCount}</span>
             <span className="flex items-center gap-1"><Globe className="w-3 h-3" />{course.language}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs ${course.type === 'SUBSCRIPTION' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
               {course.type === 'SUBSCRIPTION' ? 'Monthly' : 'One-Time'}
@@ -140,18 +122,55 @@ const CourseCard: React.FC<{ course: Course; onEnroll: (id: string) => void }> =
 
 // ── Main Page ─────────────────────────────────────────────────
 const BrowseClasses: React.FC = () => {
-  const [courses, setCourses] = useState(COURSES);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [level, setLevel] = useState<Level>('ALL');
   const [type, setType] = useState<CourseType>('ALL');
   const [showFilters, setShowFilters] = useState(false);
+  const navigate = useNavigate();
 
-  const handleEnroll = (id: string) => setCourses(prev => prev.map(c => c.id === id ? { ...c, isEnrolled: true } : c));
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.get('/courses');
+      setCourses(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to load courses:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const handleEnroll = (course: any) => {
+    navigate('/student/payment', {
+      state: {
+        courseId: course.id,
+        courseTitle: course.title,
+        price: course.price,
+        type: course.type,
+        teacherName: course.teacher
+          ? `${course.teacher.user?.firstName} ${course.teacher.user?.lastName}`
+          : 'Unknown Instructor'
+      }
+    });
+  };
 
   const filtered = courses.filter(c => {
     const q = search.toLowerCase();
-    const matchSearch = !q || c.title.toLowerCase().includes(q) || c.teacher.toLowerCase().includes(q) || c.tags.some(t => t.includes(q));
+    const teacherName = c.teacher
+      ? `${c.teacher.user?.firstName} ${c.teacher.user?.lastName}`.toLowerCase()
+      : '';
+    const matchSearch =
+      !q ||
+      c.title.toLowerCase().includes(q) ||
+      teacherName.includes(q) ||
+      (c.tags && c.tags.some((t: string) => t.toLowerCase().includes(q)));
     const matchCat = category === 'All' || c.category === category;
     const matchLevel = level === 'ALL' || c.level === level;
     const matchType = type === 'ALL' || c.type === type;
@@ -159,6 +178,14 @@ const BrowseClasses: React.FC = () => {
   });
 
   const enrolled = courses.filter(c => c.isEnrolled).length;
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <Loader2 className="w-10 h-10 text-teal-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

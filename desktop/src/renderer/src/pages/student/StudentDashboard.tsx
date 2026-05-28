@@ -149,44 +149,107 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ user, enrolledCourses, liveSt
 // ─── Classes Tab ──────────────────────────────────────────────
 interface ClassesTabProps {
   enrolledCourses: any[];
+  allCourses: any[];
   onSelectCourse: (course: any) => void;
+  onNavigateToPayment: (course: any) => void;
 }
 
-const ClassesTab: React.FC<ClassesTabProps> = ({ enrolledCourses, onSelectCourse }) => (
-  <div className="space-y-6">
-    <h2 className="text-xl font-bold text-slate-900">Enrolled Classes</h2>
-    {enrolledCourses.length === 0 ? (
-      <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-500 text-sm">
-        You are not enrolled in any classes.
-      </div>
-    ) : (
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {enrolledCourses.map((c) => (
-          <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group hover:shadow-lg transition-all">
-            <div className="h-36 bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-              <PlayCircle className="w-12 h-12 text-white opacity-80" />
-            </div>
-            <div className="p-5">
-              <h3 className="font-bold text-slate-900 leading-snug mb-1 truncate">{c.title}</h3>
-              <p className="text-sm text-slate-500 mb-4">{c.teacherName}</p>
-              <div className="flex justify-between text-xs text-slate-500 mb-1.5">
-                <span>Lessons: {c.totalLessons}</span>
-                <span className="font-semibold text-teal-600">{c.progress}%</span>
-              </div>
-              <ProgressBar value={c.progress} />
-              <button 
-                onClick={() => onSelectCourse(c)}
-                className="mt-4 w-full border border-teal-200 text-teal-700 hover:bg-teal-50 text-sm font-medium py-2 rounded-lg transition-colors"
-              >
-                Continue →
-              </button>
-            </div>
+const ClassesTab: React.FC<ClassesTabProps> = ({ enrolledCourses, allCourses, onSelectCourse, onNavigateToPayment }) => {
+  const navigate = useNavigate();
+  const availableClasses = allCourses.filter(
+    (c) => c.type === 'SUBSCRIPTION' && !enrolledCourses.some((e) => e.id === c.id)
+  );
+
+  return (
+    <div className="space-y-10">
+      {/* Enrolled Classes Section */}
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-slate-900">Enrolled Classes</h2>
+          <button 
+            onClick={() => navigate('/student/classes')}
+            className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
+          >
+            + Add Class
+          </button>
+        </div>
+        {enrolledCourses.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-500 text-sm">
+            You are not enrolled in any classes.
           </div>
-        ))}
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {enrolledCourses.map((c) => (
+              <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group hover:shadow-lg transition-all">
+                <div className="h-36 bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
+                  <PlayCircle className="w-12 h-12 text-white opacity-80" />
+                </div>
+                <div className="p-5">
+                  <h3 className="font-bold text-slate-900 leading-snug mb-1 truncate">{c.title}</h3>
+                  <p className="text-sm text-slate-500 mb-4">{c.teacherName}</p>
+                  <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+                    <span>Lessons: {c.totalLessons}</span>
+                    <span className="font-semibold text-teal-600">{c.progress}%</span>
+                  </div>
+                  <ProgressBar value={c.progress} />
+                  <button 
+                    onClick={() => onSelectCourse(c)}
+                    className="mt-4 w-full border border-teal-200 text-teal-700 hover:bg-teal-50 text-sm font-medium py-2 rounded-lg transition-colors"
+                  >
+                    Continue →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    )}
-  </div>
-);
+
+      {/* Available Classes Section */}
+      <div>
+        <h2 className="text-xl font-bold text-slate-900 mb-6">Classes You Can Enroll In</h2>
+        {availableClasses.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-500 text-sm">
+            No other classes available for enrollment at the moment.
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {availableClasses.map((c) => {
+              const teacherName = c.teacher
+                ? `${c.teacher.user?.firstName} ${c.teacher.user?.lastName}`
+                : 'Unknown Instructor';
+              return (
+                <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group hover:shadow-lg transition-all flex flex-col">
+                  <div className="h-36 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center relative">
+                    <BookOpen className="w-10 h-10 text-slate-400" />
+                    <span className="absolute top-3 right-3 bg-blue-505 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                      Subscription
+                    </span>
+                  </div>
+                  <div className="p-5 flex flex-col flex-1">
+                    <h3 className="font-bold text-slate-900 text-sm leading-snug mb-1 line-clamp-2">{c.title}</h3>
+                    <p className="text-xs text-slate-500 mb-3">by {teacherName}</p>
+                    <p className="text-xs text-slate-600 mb-4 line-clamp-2">{c.description || 'Interactive online class sessions.'}</p>
+                    
+                    <div className="mt-auto pt-3 border-t border-slate-50 flex items-center justify-between">
+                      <span className="font-bold text-teal-700 text-base">Rs. {c.price.toLocaleString()}/mo</span>
+                      <button 
+                        onClick={() => onNavigateToPayment(c)}
+                        className="btn-primary py-1.5 px-4 text-xs font-semibold rounded-lg shadow-sm"
+                      >
+                        Enroll Now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ─── Videos Tab ───────────────────────────────────────────────
 interface VideosTabProps {
@@ -654,7 +717,9 @@ const StudentDashboard: React.FC = () => {
         {activeTab === 'classes' && (
           <ClassesTab 
             enrolledCourses={enrolledCourses} 
+            allCourses={allCourses}
             onSelectCourse={setSelectedCourse} 
+            onNavigateToPayment={onNavigateToPayment}
           />
         )}
         {activeTab === 'videos' && (

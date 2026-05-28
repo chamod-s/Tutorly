@@ -50,6 +50,10 @@ const PaymentPage: React.FC = () => {
       // DEV SIMULATION — auto-succeed after 2s
       console.log('[PayHere] Checkout URL:', checkoutUrl, params);
       await new Promise(r => setTimeout(r, 2000));
+
+      // Auto-enroll in DEV SIMULATION so enrollment exists in backend
+      await apiClient.post('/enrollments', { courseId });
+
       setStep('success');
     } catch (err: unknown) {
       setError(err instanceof AxiosError ? (err.response?.data?.message || 'Payment initiation failed') : 'Network error');
