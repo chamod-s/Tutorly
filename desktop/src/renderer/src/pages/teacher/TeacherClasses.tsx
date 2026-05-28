@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { BookOpen, Plus, Edit2, Trash2, Eye, EyeOff, X, Check, Calendar, DollarSign, Tag, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, Plus, Edit2, Trash2, Eye, EyeOff, X, Check, DollarSign, Tag, Globe, Loader2 } from 'lucide-react';
+import { apiClient } from '../../api/client';
 
 type CourseType = 'SUBSCRIPTION' | 'ONE_TIME';
 type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
@@ -17,20 +18,23 @@ interface Course {
   category: string;
   tags: string[];
   isPublished: boolean;
-  totalLessons: number;
-  enrollments: number;
-  schedules: string[];
+  _count?: {
+    lessons: number;
+    enrollments: number;
+  };
 }
 
-const MOCK: Course[] = [
-  { id: '1', title: 'A/L Mathematics Complete', shortDesc: 'Master A/L Math', description: 'Complete A/L mathematics course.', price: 4500, monthlyPrice: 4500, type: 'SUBSCRIPTION', level: 'ADVANCED', language: 'Sinhala', category: 'Mathematics', tags: ['a-level', 'maths'], isPublished: true, totalLessons: 48, enrollments: 312, schedules: ['Mon 6:00 PM', 'Wed 6:00 PM', 'Sat 9:00 AM'] },
-  { id: '2', title: 'Python Zero to Hero', shortDesc: 'Learn Python from scratch', description: 'Full Python programming course.', price: 2990, type: 'ONE_TIME', level: 'BEGINNER', language: 'English', category: 'Programming', tags: ['python', 'beginner'], isPublished: true, totalLessons: 36, enrollments: 187, schedules: ['Tue 5:00 PM', 'Thu 5:00 PM'] },
-  { id: '3', title: 'Physics for O/L', shortDesc: 'O/L Physics complete', description: 'Covers all O/L physics topics.', price: 3200, monthlyPrice: 3200, type: 'SUBSCRIPTION', level: 'INTERMEDIATE', language: 'Sinhala', category: 'Science', tags: ['o-level', 'physics'], isPublished: false, totalLessons: 30, enrollments: 0, schedules: [] },
-];
-
-const EMPTY: Omit<Course, 'id' | 'isPublished' | 'totalLessons' | 'enrollments'> = {
-  title: '', shortDesc: '', description: '', price: 0, monthlyPrice: undefined, type: 'SUBSCRIPTION',
-  level: 'BEGINNER', language: 'Sinhala', category: '', tags: [], schedules: [],
+const EMPTY = {
+  title: '',
+  shortDesc: '',
+  description: '',
+  price: 0,
+  monthlyPrice: undefined,
+  type: 'SUBSCRIPTION' as CourseType,
+  level: 'BEGINNER' as CourseLevel,
+  language: 'Sinhala',
+  category: '',
+  tags: [] as string[],
 };
 
 const Badge: React.FC<{ text: string; color: string }> = ({ text, color }) => (
@@ -52,7 +56,6 @@ const CourseForm: React.FC<{
 }> = ({ initial, onSave, onCancel, title }) => {
   const [form, setForm] = useState(initial);
   const [tagInput, setTagInput] = useState('');
-  const [schedInput, setSchedInput] = useState('');
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
 
   return (
@@ -64,12 +67,18 @@ const CourseForm: React.FC<{
         </div>
         <div className="p-6 space-y-5">
           {/* Basic */}
-          <div><label className="block text-sm font-medium text-slate-700 mb-1.5">Course Title *</label>
-            <input className="input-field" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. A/L Chemistry Complete" /></div>
-          <div><label className="block text-sm font-medium text-slate-700 mb-1.5">Short Description</label>
-            <input className="input-field" value={form.shortDesc} onChange={e => set('shortDesc', e.target.value)} placeholder="One-line summary" /></div>
-          <div><label className="block text-sm font-medium text-slate-700 mb-1.5">Full Description</label>
-            <textarea rows={3} className="input-field resize-none" value={form.description} onChange={e => set('description', e.target.value)} /></div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Course Title *</label>
+            <input className="input-field" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. A/L Chemistry Complete" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Short Description</label>
+            <input className="input-field" value={form.shortDesc} onChange={e => set('shortDesc', e.target.value)} placeholder="One-line summary" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Full Description</label>
+            <textarea rows={3} className="input-field resize-none" value={form.description} onChange={e => set('description', e.target.value)} />
+          </div>
 
           {/* Pricing */}
           <div className="p-4 bg-slate-50 rounded-xl space-y-4">
@@ -91,18 +100,22 @@ const CourseForm: React.FC<{
 
           {/* Class Details */}
           <div className="grid grid-cols-3 gap-4">
-            <div><label className="block text-xs font-medium text-slate-600 mb-1">Level</label>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Level</label>
               <select className="input-field" value={form.level} onChange={e => set('level', e.target.value)}>
                 {['BEGINNER', 'INTERMEDIATE', 'ADVANCED'].map(l => <option key={l}>{l}</option>)}
               </select>
             </div>
-            <div><label className="block text-xs font-medium text-slate-600 mb-1">Language</label>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Language</label>
               <select className="input-field" value={form.language} onChange={e => set('language', e.target.value)}>
                 {['Sinhala', 'English', 'Tamil'].map(l => <option key={l}>{l}</option>)}
               </select>
             </div>
-            <div><label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
-              <input className="input-field" value={form.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Science" /></div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
+              <input className="input-field" value={form.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Science" />
+            </div>
           </div>
 
           {/* Tags */}
@@ -120,25 +133,6 @@ const CourseForm: React.FC<{
                 onKeyDown={e => { if (e.key === 'Enter' && tagInput.trim()) { set('tags', [...form.tags, tagInput.trim()]); setTagInput(''); } }} />
               <button type="button" onClick={() => { if (tagInput.trim()) { set('tags', [...form.tags, tagInput.trim()]); setTagInput(''); } }}
                 className="px-3 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700">Add</button>
-            </div>
-          </div>
-
-          {/* Schedules */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Class Schedule</label>
-            <div className="space-y-2 mb-2">
-              {form.schedules.map((s, i) => (
-                <div key={i} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-200 text-sm">
-                  <span className="text-slate-700">{s}</span>
-                  <button onClick={() => set('schedules', form.schedules.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input className="input-field flex-1" placeholder="e.g. Mon 6:00 PM" value={schedInput} onChange={e => setSchedInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && schedInput.trim()) { set('schedules', [...form.schedules, schedInput.trim()]); setSchedInput(''); } }} />
-              <button onClick={() => { if (schedInput.trim()) { set('schedules', [...form.schedules, schedInput.trim()]); setSchedInput(''); } }}
-                className="px-3 py-2 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-800">Add</button>
             </div>
           </div>
         </div>
@@ -171,37 +165,115 @@ const DeleteModal: React.FC<{ title: string; onConfirm: () => void; onCancel: ()
 
 // ── Main Page ─────────────────────────────────────────────────
 const TeacherClasses: React.FC = () => {
-  const [courses, setCourses] = useState<Course[]>(MOCK);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const handleCreate = (data: typeof EMPTY) => {
-    const newCourse: Course = { ...data, id: Date.now().toString(), isPublished: false, totalLessons: 0, enrollments: 0 };
-    setCourses(prev => [newCourse, ...prev]);
-    setShowCreate(false);
+  const fetchMyCourses = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.get('/courses/my/courses');
+      setCourses(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to load courses:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEdit = (data: typeof EMPTY) => {
-    setCourses(prev => prev.map(c => c.id === editId ? { ...c, ...data } : c));
-    setEditId(null);
+  useEffect(() => {
+    fetchMyCourses();
+  }, []);
+
+  const handleCreate = async (data: typeof EMPTY) => {
+    try {
+      await apiClient.post('/courses', {
+        title: data.title,
+        shortDesc: data.shortDesc,
+        description: data.description,
+        price: data.price,
+        monthlyPrice: data.type === 'SUBSCRIPTION' ? data.price : undefined,
+        type: data.type,
+        level: data.level,
+        language: data.language,
+        category: data.category,
+        tags: data.tags,
+      });
+      fetchMyCourses();
+      setShowCreate(false);
+    } catch (err) {
+      console.error('Failed to create course:', err);
+    }
   };
 
-  const handleDelete = () => {
-    setCourses(prev => prev.filter(c => c.id !== deleteId));
-    setDeleteId(null);
+  const handleEdit = async (data: typeof EMPTY) => {
+    try {
+      await apiClient.put(`/courses/${editId}`, {
+        title: data.title,
+        shortDesc: data.shortDesc,
+        description: data.description,
+        price: data.price,
+        monthlyPrice: data.type === 'SUBSCRIPTION' ? data.price : undefined,
+        type: data.type,
+        level: data.level,
+        language: data.language,
+        category: data.category,
+        tags: data.tags,
+      });
+      fetchMyCourses();
+      setEditId(null);
+    } catch (err) {
+      console.error('Failed to update course:', err);
+    }
   };
 
-  const togglePublish = (id: string) => setCourses(prev => prev.map(c => c.id === id ? { ...c, isPublished: !c.isPublished } : c));
+  const handleDelete = async () => {
+    try {
+      await apiClient.delete(`/courses/${deleteId}`);
+      fetchMyCourses();
+      setDeleteId(null);
+    } catch (err) {
+      console.error('Failed to delete course:', err);
+    }
+  };
+
+  const togglePublish = async (id: string) => {
+    try {
+      await apiClient.patch(`/courses/${id}/publish`);
+      fetchMyCourses();
+    } catch (err) {
+      console.error('Failed to toggle publish status:', err);
+    }
+  };
 
   const editingCourse = courses.find(c => c.id === editId);
   const deletingCourse = courses.find(c => c.id === deleteId);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <Loader2 className="w-10 h-10 text-teal-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {showCreate && <CourseForm title="Create New Class" initial={EMPTY} onSave={handleCreate} onCancel={() => setShowCreate(false)} />}
       {editId && editingCourse && (
-        <CourseForm title="Edit Class" initial={{ ...editingCourse }} onSave={handleEdit} onCancel={() => setEditId(null)} />
+        <CourseForm title="Edit Class" initial={{
+          title: editingCourse.title || '',
+          shortDesc: editingCourse.shortDesc || '',
+          description: editingCourse.description || '',
+          price: editingCourse.price || 0,
+          type: editingCourse.type || 'SUBSCRIPTION',
+          level: editingCourse.level || 'BEGINNER',
+          language: editingCourse.language || 'Sinhala',
+          category: editingCourse.category || '',
+          tags: editingCourse.tags || [],
+        } as typeof EMPTY} onSave={handleEdit} onCancel={() => setEditId(null)} />
       )}
       {deleteId && deletingCourse && <DeleteModal title={deletingCourse.title} onConfirm={handleDelete} onCancel={() => setDeleteId(null)} />}
 
@@ -223,57 +295,51 @@ const TeacherClasses: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {courses.map(c => (
-            <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className="font-bold text-slate-900 text-lg">{c.title}</h3>
-                      <Badge text={c.isPublished ? 'Published' : 'Draft'} color={c.isPublished ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'} />
-                      <Badge text={c.type === 'SUBSCRIPTION' ? 'Subscription' : 'One-Time'} color="bg-blue-50 text-blue-700" />
-                      <Badge text={c.level} color={LEVEL_COLORS[c.level]} />
+          {courses.map(c => {
+            const lessonsCount = c._count?.lessons ?? 0;
+            const enrollmentsCount = c._count?.enrollments ?? 0;
+            return (
+              <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="font-bold text-slate-900 text-lg">{c.title}</h3>
+                        <Badge text={c.isPublished ? 'Published' : 'Draft'} color={c.isPublished ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-505'} />
+                        <Badge text={c.type === 'SUBSCRIPTION' ? 'Subscription' : 'One-Time'} color="bg-blue-50 text-blue-700" />
+                        <Badge text={c.level} color={LEVEL_COLORS[c.level]} />
+                      </div>
+                      <p className="text-sm text-slate-505">{c.shortDesc}</p>
                     </div>
-                    <p className="text-sm text-slate-500">{c.shortDesc}</p>
+                    <div className="text-right shrink-0">
+                      <p className="text-xl font-bold text-teal-700">Rs. {c.price.toLocaleString()}</p>
+                      {c.type === 'SUBSCRIPTION' && <p className="text-xs text-slate-400">/month</p>}
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xl font-bold text-teal-700">Rs. {c.price.toLocaleString()}</p>
-                    {c.type === 'SUBSCRIPTION' && <p className="text-xs text-slate-400">/month</p>}
+
+                  <div className="flex flex-wrap gap-4 text-sm text-slate-600 mb-4">
+                    <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5 text-slate-400" />{c.language}</span>
+                    <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-slate-400" />{lessonsCount} lessons</span>
+                    <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5 text-slate-400" />{c.category}</span>
+                    {enrollmentsCount > 0 && <span className="font-semibold text-teal-700">{enrollmentsCount} students enrolled</span>}
                   </div>
-                </div>
 
-                <div className="flex flex-wrap gap-4 text-sm text-slate-600 mb-4">
-                  <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5 text-slate-400" />{c.language}</span>
-                  <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-slate-400" />{c.totalLessons} lessons</span>
-                  <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5 text-slate-400" />{c.category}</span>
-                  {c.enrollments > 0 && <span className="font-semibold text-teal-700">{c.enrollments} students enrolled</span>}
-                </div>
-
-                {c.schedules.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {c.schedules.map((s, i) => (
-                      <span key={i} className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 text-xs rounded-lg font-medium">
-                        <Calendar className="w-3 h-3" /> {s}
-                      </span>
-                    ))}
+                  <div className="flex gap-2 pt-3 border-t border-slate-50">
+                    <button onClick={() => togglePublish(c.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${c.isPublished ? 'border-slate-200 text-slate-600 hover:bg-slate-50' : 'border-teal-200 text-teal-700 hover:bg-teal-50'}`}>
+                      {c.isPublished ? <><EyeOff className="w-3.5 h-3.5" /> Unpublish</> : <><Eye className="w-3.5 h-3.5" /> Publish</>}
+                    </button>
+                    <button onClick={() => setEditId(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                      <Edit2 className="w-3.5 h-3.5" /> Edit
+                    </button>
+                    <button onClick={() => setDeleteId(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-colors ml-auto">
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    </button>
                   </div>
-                )}
-
-                <div className="flex gap-2 pt-3 border-t border-slate-50">
-                  <button onClick={() => togglePublish(c.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${c.isPublished ? 'border-slate-200 text-slate-600 hover:bg-slate-50' : 'border-teal-200 text-teal-700 hover:bg-teal-50'}`}>
-                    {c.isPublished ? <><EyeOff className="w-3.5 h-3.5" /> Unpublish</> : <><Eye className="w-3.5 h-3.5" /> Publish</>}
-                  </button>
-                  <button onClick={() => setEditId(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
-                    <Edit2 className="w-3.5 h-3.5" /> Edit
-                  </button>
-                  <button onClick={() => setDeleteId(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-colors ml-auto">
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

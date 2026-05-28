@@ -162,6 +162,8 @@ const BrowseClasses: React.FC = () => {
   };
 
   const filtered = courses.filter(c => {
+    if (c.isEnrolled) return false;
+
     const q = search.toLowerCase();
     const teacherName = c.teacher
       ? `${c.teacher.user?.firstName} ${c.teacher.user?.lastName}`.toLowerCase()

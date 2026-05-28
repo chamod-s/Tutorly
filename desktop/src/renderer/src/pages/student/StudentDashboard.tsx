@@ -597,7 +597,7 @@ const StudentDashboard: React.FC = () => {
       setLoading(true);
       // Fetch enrollments
       const enrollmentsRes = await apiClient.get('/enrollments/my');
-      const enrolls = enrollmentsRes.data.data?.enrollments || [];
+      const enrolls = enrollmentsRes.data.data || [];
       const mappedEnrolled = enrolls.map((e: any, idx: number) => ({
         id: e.course.id,
         title: e.course.title,
