@@ -49,4 +49,17 @@ export class StreamController {
     const result = await streamService.getRecording(req.params.id);
     sendSuccess(res, result, 'Recording info fetched');
   });
+
+  static update = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new UnauthorizedError();
+    const stream = await streamService.updateStream(req.params.id, req.user.id, req.body);
+    sendSuccess(res, stream, 'Stream updated successfully');
+  });
+
+  static togglePause = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new UnauthorizedError();
+    const { isPaused } = req.body;
+    const stream = await streamService.togglePause(req.params.id, req.user.id, isPaused);
+    sendSuccess(res, stream, `Stream ${isPaused ? 'paused' : 'resumed'} successfully`);
+  });
 }

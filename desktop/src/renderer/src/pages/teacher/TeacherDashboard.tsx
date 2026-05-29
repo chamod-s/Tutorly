@@ -1,18 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../../store/useAuthStore';
-import { LayoutDashboard, BookOpen, Radio, Video, DollarSign, Users, Plus, Upload, Play, TrendingUp, Star, ChevronRight, Check, Loader2, X } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Radio, Video, DollarSign, Users, Plus, Upload, Play, TrendingUp, Star, ChevronRight, Loader2, X, Edit, Trash } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { LessonManagerModal } from '../../components/teacher/LessonManagerModal';
 import { CourseForm, DeleteModal, EMPTY } from './TeacherClasses';
+import TeacherStreamPage from '../stream/TeacherStreamPage';
 
 type Tab = 'overview' | 'classes' | 'live' | 'videos' | 'earnings' | 'students';
 
-const STUDENTS = [
-  { id: '1', name: 'Kasun Silva', email: 'kasun@email.com', course: 'A/L Mathematics', progress: 72, joined: '2026-04-01' },
-  { id: '2', name: 'Dilini Perera', email: 'dilini@email.com', course: 'Python Programming', progress: 45, joined: '2026-04-15' },
-  { id: '3', name: 'Nimal Fernando', email: 'nimal@email.com', course: 'A/L Mathematics', progress: 91, joined: '2026-03-20' },
-  { id: '4', name: 'Sachini Madushani', email: 'sachini@email.com', course: 'Python Programming', progress: 28, joined: '2026-05-01' },
-];
+
 
 const EARNINGS = [
   { month: 'Jan', amount: 85000 }, { month: 'Feb', amount: 120000 },
@@ -337,149 +334,6 @@ const ClassesTab: React.FC<ClassesTabProps> = ({ courses, fetchMyCourses, loadin
   );
 };
 
-const LiveTab: React.FC<{ courses: any[]; fetchDashboardData: () => void }> = ({ courses, fetchDashboardData }) => {
-  const [isLive, setIsLive] = useState(false);
-  const [scheduled, setScheduled] = useState(false);
-
-  // Scheduling Form State
-  const [title, setTitle] = useState('');
-  const [courseId, setCourseId] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [scheduling, setScheduling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Set default course ID
-  useEffect(() => {
-    if (courses.length > 0 && !courseId) {
-      setCourseId(courses[0].id);
-    }
-  }, [courses]);
-
-  const handleSchedule = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !date || !time || !courseId) {
-      setError('Please fill in all scheduling fields.');
-      return;
-    }
-
-    try {
-      setScheduling(true);
-      setError(null);
-      
-      const scheduledAt = new Date(`${date}T${time}`);
-
-      await apiClient.post('/streams', {
-        title: title.trim(),
-        courseId,
-        scheduledAt,
-        isPublic: false,
-      });
-
-      setScheduled(true);
-      setTitle('');
-      setDate('');
-      setTime('');
-      fetchDashboardData();
-      setTimeout(() => setScheduled(false), 3000);
-    } catch (err: any) {
-      console.error('Failed to schedule stream:', err);
-      setError(err.response?.data?.message || 'Failed to schedule live session.');
-    } finally {
-      setScheduling(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6 max-w-2xl">
-      <h2 className="text-xl font-bold text-slate-900">Live Sessions</h2>
-
-      <div className={`rounded-2xl border-2 p-6 text-center transition-all ${isLive ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'}`}>
-        <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-5 ${isLive ? 'bg-red-100 animate-pulse' : 'bg-slate-100'}`}>
-          <Radio className={`w-10 h-10 ${isLive ? 'text-red-600' : 'text-slate-500'}`} />
-        </div>
-        {isLive ? (
-          <>
-            <p className="text-xl font-bold text-red-700 mb-1">🔴 You are LIVE</p>
-            <p className="text-sm text-slate-500 mb-6">42 students watching</p>
-            <button onClick={() => setIsLive(false)} className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors">
-              End Stream
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="text-xl font-bold text-slate-900 mb-1">Start a Live Class</p>
-            <p className="text-sm text-slate-500 mb-6">Your students will be notified immediately</p>
-            <button onClick={() => setIsLive(true)} className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 mx-auto transition-colors">
-              <Radio className="w-5 h-5" /> Go Live Now
-            </button>
-          </>
-        )}
-      </div>
-
-      <form onSubmit={handleSchedule} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
-        <h3 className="font-bold text-slate-900">Schedule a Session</h3>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Session Title *</label>
-            <input 
-              required 
-              className="input-field" 
-              placeholder="e.g. Calculus — Limits" 
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Associated Class *</label>
-            <select 
-              className="input-field" 
-              value={courseId}
-              onChange={e => setCourseId(e.target.value)}
-            >
-              {courses.length === 0 ? (
-                <option value="">No classes available</option>
-              ) : (
-                courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)
-              )}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Date *</label>
-            <input 
-              type="date" 
-              required 
-              className="input-field" 
-              value={date}
-              onChange={e => setDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Time *</label>
-            <input 
-              type="time" 
-              required 
-              className="input-field" 
-              value={time}
-              onChange={e => setTime(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <button 
-          type="submit" 
-          disabled={scheduling}
-          className="btn-primary px-6 py-2.5 text-sm font-semibold disabled:opacity-50"
-        >
-          {scheduling ? 'Scheduling Session...' : 'Schedule Session'}
-        </button>
-        {scheduled && <p className="text-sm text-green-600 flex items-center gap-1.5"><Check className="w-4 h-4" /> Session scheduled! Students will be notified.</p>}
-      </form>
-    </div>
-  );
-};
 
 interface VideoUploadModalProps {
   file: File;
@@ -627,12 +481,204 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
   );
 };
 
+interface VideoEditModalProps {
+  video: any;
+  courses: any[];
+  onClose: () => void;
+  onRefresh: () => void;
+}
+
+const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, courses, onClose, onRefresh }) => {
+  const [title, setTitle] = useState(video.title);
+  const [description, setDescription] = useState(video.description || '');
+  const [courseId, setCourseId] = useState(video.courseId || '');
+  const [status, setStatus] = useState(video.status || 'PUBLISHED');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await apiClient.patch(`/videos/${video.id}`, {
+        title: title.trim(),
+        description: description.trim(),
+        courseId: courseId || null,
+        status,
+      });
+      onRefresh();
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Failed to update video details.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-xl w-full max-w-lg overflow-hidden flex flex-col text-left">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="font-bold text-slate-900 text-lg">Edit Video Details</h3>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-100 text-red-700 text-xs rounded-xl font-medium">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Video Title *</label>
+            <input 
+              type="text" 
+              className="input-field" 
+              value={title} 
+              onChange={e => setTitle(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
+            <textarea 
+              rows={3} 
+              className="input-field resize-none" 
+              value={description} 
+              onChange={e => setDescription(e.target.value)} 
+              placeholder="Provide a brief description of what this lecture covers..."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Associated Class</label>
+              <select 
+                className="input-field text-sm" 
+                value={courseId} 
+                onChange={e => setCourseId(e.target.value)}
+              >
+                <option value="">No associated class (Public)</option>
+                {courses.map(c => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
+              <select 
+                className="input-field text-sm" 
+                value={status} 
+                onChange={e => setStatus(e.target.value)}
+              >
+                <option value="PUBLISHED">Published</option>
+                <option value="DRAFT">Draft</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={saving || !title.trim()} 
+              className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-colors duration-200 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+interface VideoDeleteModalProps {
+  video: any;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+const VideoDeleteModal: React.FC<VideoDeleteModalProps> = ({ video, onClose, onConfirm }) => {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError(null);
+    try {
+      await apiClient.delete(`/videos/${video.id}`);
+      onConfirm();
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Failed to delete video.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-xl w-full max-w-md overflow-hidden flex flex-col text-left">
+        <div className="p-6">
+          <h3 className="font-bold text-slate-900 text-lg mb-2">Delete Video</h3>
+          <p className="text-sm text-slate-500 mb-4 leading-relaxed">
+            Are you sure you want to delete <span className="font-semibold text-slate-850">"{video.title}"</span>? This action is permanent and cannot be undone. Enrolled students will immediately lose access to this lecture video.
+          </p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-700 text-xs rounded-xl font-medium">
+              {error}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <button 
+              onClick={onClose} 
+              disabled={deleting} 
+              className="px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleDelete} 
+              disabled={deleting} 
+              className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-colors duration-200"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Delete Video
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const VideosTab: React.FC<{ videos: any[]; courses: any[]; fetchDashboardData: () => void }> = ({ videos, courses, fetchDashboardData }) => {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [editingVideo, setEditingVideo] = useState<any | null>(null);
+  const [deletingVideo, setDeletingVideo] = useState<any | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -749,21 +795,44 @@ const VideosTab: React.FC<{ videos: any[]; courses: any[]; fetchDashboardData: (
           ) : (
             videos.map(v => (
               <div key={v.id} className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors">
-                <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 bg-slate-850 bg-slate-800 rounded-lg flex items-center justify-center shrink-0">
                   <Play className="w-6 h-6 text-white" />
                 </div>
+                
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-slate-900 text-sm truncate">{v.title}</p>
-                  <p className="text-xs text-slate-505">
+                  <p className="text-xs text-slate-500">
                     Duration: {v.duration || 'N/A'}
                     {v.course && <span className="ml-2 bg-teal-50 text-teal-700 px-2 py-0.5 rounded text-[10px] font-semibold">{v.course.title}</span>}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700">
-                    {v.status || 'PUBLISHED'}
-                  </span>
-                  {v.views > 0 && <p className="text-xs text-slate-400 mt-1">{v.views} views</p>}
+                
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right mr-3">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      v.status === 'DRAFT' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-green-50 text-green-700 border border-green-100'
+                    }`}>
+                      {v.status || 'PUBLISHED'}
+                    </span>
+                    {v.views > 0 && <p className="text-xs text-slate-400 mt-1">{v.views} views</p>}
+                  </div>
+                  
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setEditingVideo(v); }} 
+                      className="p-2 text-slate-400 hover:text-teal-600 hover:bg-slate-100 rounded-lg transition-colors"
+                      title="Edit details"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setDeletingVideo(v); }} 
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-55/60 rounded-lg transition-colors"
+                      title="Delete video"
+                    >
+                      <Trash className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -782,14 +851,31 @@ const VideosTab: React.FC<{ videos: any[]; courses: any[]; fetchDashboardData: (
           error={error}
         />
       )}
+
+      {editingVideo && (
+        <VideoEditModal 
+          video={editingVideo}
+          courses={courses}
+          onClose={() => setEditingVideo(null)}
+          onRefresh={fetchDashboardData}
+        />
+      )}
+
+      {deletingVideo && (
+        <VideoDeleteModal 
+          video={deletingVideo}
+          onClose={() => setDeletingVideo(null)}
+          onConfirm={fetchDashboardData}
+        />
+      )}
     </div>
   );
 };
 
 // ── Earnings Tab ──────────────────────────────────────────────
 const EarningsTab: React.FC<{ courses: any[] }> = ({ courses }) => {
-  const total = EARNINGS.reduce((s, e) => s + e.amount, 0);
   const max = Math.max(...EARNINGS.map(e => e.amount));
+  const dynamicTotal = courses.reduce((s, c) => s + (c._count?.enrollments || 0) * c.price, 0);
 
   // Calculate dynamic course revenues
   const courseRevenues = courses.map(c => ({
@@ -805,12 +891,12 @@ const EarningsTab: React.FC<{ courses: any[] }> = ({ courses }) => {
       <h2 className="text-xl font-bold text-slate-900">Earnings Analytics</h2>
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Earned', value: `Rs. ${(total / 1000).toFixed(0)}k` },
-          { label: 'This Month', value: 'Rs. 167k' },
-          { label: 'Pending Payout', value: 'Rs. 45k' },
+          { label: 'Total Earned', value: `Rs. ${dynamicTotal.toLocaleString()}` },
+          { label: 'Enrolled Students', value: `${courses.reduce((sum, c) => sum + (c._count?.enrollments || 0), 0)}` },
+          { label: 'Active Courses', value: `${courses.filter(c => c.isPublished).length}` },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-            <p className="text-sm text-slate-505 mb-1">{s.label}</p>
+            <p className="text-sm text-slate-500 mb-1">{s.label}</p>
             <p className="text-2xl font-bold text-slate-900">{s.value}</p>
           </div>
         ))}
@@ -852,11 +938,11 @@ const EarningsTab: React.FC<{ courses: any[] }> = ({ courses }) => {
 };
 
 // ── Students Tab ──────────────────────────────────────────────
-const StudentsTab: React.FC = () => (
+const StudentsTab: React.FC<{ students: any[] }> = ({ students }) => (
   <div className="space-y-6">
     <div className="flex justify-between items-center">
       <h2 className="text-xl font-bold text-slate-900">Student Management</h2>
-      <Badge color="bg-slate-100 text-slate-600">{STUDENTS.length} students</Badge>
+      <Badge color="bg-slate-100 text-slate-600">{students.length} students</Badge>
     </div>
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -869,7 +955,7 @@ const StudentsTab: React.FC = () => (
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {STUDENTS.map(s => (
+            {students.map(s => (
               <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
@@ -913,19 +999,33 @@ const TeacherDashboard: React.FC = () => {
   const [courses, setCourses] = useState<any[]>([]);
   const [liveStreams, setLiveStreams] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
+
+  const socketRef = useRef<Socket | null>(null);
 
   const fetchDashboardData = async () => {
     try {
       setLoadingDashboard(true);
-      const [coursesRes, streamsRes, videosRes] = await Promise.all([
+      const [coursesRes, streamsRes, videosRes, studentsRes] = await Promise.all([
         apiClient.get('/courses/my/courses'),
         apiClient.get('/streams/my'),
         apiClient.get('/videos/my').catch(() => ({ data: { data: [] } })),
+        apiClient.get('/enrollments/teacher/students').catch(() => ({ data: { data: [] } })),
       ]);
       setCourses(coursesRes.data.data || []);
       setLiveStreams(streamsRes.data.data || []);
       setVideos(videosRes.data.data || []);
+      
+      const mappedStudents = (studentsRes.data.data || []).map((e: any) => ({
+        id: e.id,
+        name: `${e.student.firstName} ${e.student.lastName}`,
+        email: e.student.email,
+        course: e.course.title,
+        progress: 0,
+        joined: e.enrolledAt,
+      }));
+      setStudents(mappedStudents);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -935,6 +1035,47 @@ const TeacherDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
+
+    const socket = io('http://127.0.0.1:5000', {
+      auth: { token: useAuthStore.getState().token },
+      transports: ['websocket'],
+    });
+    socketRef.current = socket;
+
+    socket.on('enrollment:new', (data: { courseId: string; courseTitle: string; price: number; studentName: string; studentEmail: string; enrolledAt: string }) => {
+      // Real-time enrollment count updates for course list
+      setCourses(prevCourses => {
+        return prevCourses.map(c => {
+          if (c.id === data.courseId) {
+            return {
+              ...c,
+              _count: {
+                ...c._count,
+                enrollments: (c._count?.enrollments || 0) + 1,
+              },
+            };
+          }
+          return c;
+        });
+      });
+
+      // Prepend the new student live to the student list
+      setStudents(prevStudents => [
+        {
+          id: Math.random().toString(),
+          name: data.studentName,
+          email: data.studentEmail,
+          course: data.courseTitle,
+          progress: 0,
+          joined: data.enrolledAt,
+        },
+        ...prevStudents,
+      ]);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   return (
@@ -960,10 +1101,10 @@ const TeacherDashboard: React.FC = () => {
       <div className="flex-1 min-w-0">
         {tab === 'overview' && <Overview name={name} onTab={setTab} courses={courses} liveStreams={liveStreams} />}
         {tab === 'classes'  && <ClassesTab courses={courses} fetchMyCourses={fetchDashboardData} loading={loadingDashboard} />}
-        {tab === 'live'     && <LiveTab courses={courses} fetchDashboardData={fetchDashboardData} />}
+        {tab === 'live'     && <TeacherStreamPage />}
         {tab === 'videos'   && <VideosTab videos={videos} courses={courses} fetchDashboardData={fetchDashboardData} />}
         {tab === 'earnings' && <EarningsTab courses={courses} />}
-        {tab === 'students' && <StudentsTab />}
+        {tab === 'students' && <StudentsTab students={students} />}
       </div>
     </div>
   );

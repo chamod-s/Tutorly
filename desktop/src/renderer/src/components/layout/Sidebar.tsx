@@ -8,7 +8,8 @@ import {
   LogOut,
   Video,
   CreditCard,
-  GraduationCap
+  GraduationCap,
+  User
 } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
@@ -29,7 +30,7 @@ const Sidebar: React.FC = () => {
           { name: 'Dashboard', path: '/teacher', icon: <LayoutDashboard size={20} /> },
           { name: 'My Classes', path: '/teacher/classes', icon: <BookOpen size={20} /> },
           { name: 'Live Streams', path: '/teacher/live', icon: <Video size={20} /> },
-          { name: 'Verification Apply', path: '/teacher/apply', icon: <GraduationCap size={20} /> },
+          { name: 'My Profile', path: '/teacher/profile', icon: <User size={20} /> },
         ];
       case 'STUDENT':
       default:

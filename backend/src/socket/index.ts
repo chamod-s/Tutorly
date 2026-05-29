@@ -7,7 +7,17 @@ import prisma from '../config/database';
 
 // ─── Socket.IO initializer ────────────────────────────────────
 
+let ioInstance: Server | null = null;
+
+export const getIO = (): Server => {
+  if (!ioInstance) {
+    throw new Error('Socket.IO is not initialized yet');
+  }
+  return ioInstance;
+};
+
 export const initSocketIO = (io: Server): void => {
+  ioInstance = io;
   // ── JWT auth middleware for Socket.IO ──────────────────────
   io.use(async (socket: Socket, next) => {
     try {

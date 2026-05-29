@@ -53,6 +53,58 @@ export const registerNotificationHandlers = (io: Server, socket: Socket): void =
       io.to(`stream:${data.streamId}`).emit('stream:status_changed', data);
     },
   );
+
+  socket.on(
+    'stream:pause_toggle',
+    (data: { streamId: string; isPaused: boolean }) => {
+      io.to(`stream:${data.streamId}`).emit('stream:paused', { isPaused: data.isPaused });
+      logger.debug('Stream pause toggled', { streamId: data.streamId, isPaused: data.isPaused });
+    },
+  );
+
+  socket.on(
+    'chat:toggle_active',
+    (data: { streamId: string; isActive: boolean }) => {
+      io.to(`stream:${data.streamId}`).emit('chat:status_changed', { isActive: data.isActive });
+      logger.debug('Chat status toggled', { streamId: data.streamId, isActive: data.isActive });
+    },
+  );
+
+  socket.on(
+    'chat:slow_mode',
+    (data: { streamId: string; isSlowMode: boolean }) => {
+      io.to(`stream:${data.streamId}`).emit('chat:slow_mode_changed', { isSlowMode: data.isSlowMode });
+      logger.debug('Chat slow mode toggled', { streamId: data.streamId, isSlowMode: data.isSlowMode });
+    },
+  );
+
+  // ── Livestream Chat Room Events ────────────────────────────
+  socket.on('joinRoom', (data: { streamId: string }) => {
+    socket.join(`stream_chat:${data.streamId}`);
+    logger.debug('Socket joined livestream chat room', { socketId: socket.id, streamId: data.streamId });
+  });
+
+  socket.on('leaveRoom', (data: { streamId: string }) => {
+    socket.leave(`stream_chat:${data.streamId}`);
+    logger.debug('Socket left livestream chat room', { socketId: socket.id, streamId: data.streamId });
+  });
+
+  socket.on(
+    'chat:send',
+    (data: {
+      streamId: string;
+      id: string;
+      userId: string;
+      name: string;
+      text: string;
+      ts: number;
+    }) => {
+      const { streamId, ...msg } = data;
+      // Broadcast messages to other users in the room
+      socket.to(`stream_chat:${streamId}`).emit('chat:message', msg);
+      logger.debug('Livestream chat message broadcasted', { streamId, text: msg.text });
+    }
+  );
 };
 
 // ─── Server-side push helper ──────────────────────────────────

@@ -10,5 +10,6 @@ router.get('/my',                                       authenticate, Enrollment
 router.get('/check/:courseId',                          authenticate, EnrollmentController.checkEnrollment);
 router.delete('/:courseId',                             authenticate, EnrollmentController.cancel);
 router.get('/course/:courseId/students', authenticate, requireTeacher, EnrollmentController.courseStudents);
+router.get('/teacher/students',          authenticate, requireTeacher, EnrollmentController.teacherStudents);
 
 export default router;

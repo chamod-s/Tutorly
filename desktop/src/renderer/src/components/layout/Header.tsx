@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import { Bell, Search, CheckCheck, Loader2, Clock } from 'lucide-react';
+import { Bell, CheckCheck, Loader2, Clock } from 'lucide-react';
 import { apiClient } from '../../api/client';
 
 interface NotificationItem {
@@ -77,16 +77,6 @@ const Header: React.FC = () => {
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-20">
       <div className="flex items-center">
-        {user?.role !== 'STUDENT' && (
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              className="pl-10 pr-4 py-2 bg-slate-100 border-transparent rounded-lg text-sm focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all w-64 outline-none"
-            />
-          </div>
-        )}
       </div>
 
       <div className="flex items-center space-x-4">
@@ -150,6 +140,8 @@ const Header: React.FC = () => {
           onClick={() => {
             if (user?.role === 'STUDENT') {
               navigate('/student?tab=profile');
+            } else if (user?.role === 'TEACHER') {
+              navigate('/teacher/profile');
             }
           }}
           className="flex items-center cursor-pointer group"

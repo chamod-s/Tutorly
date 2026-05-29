@@ -19,7 +19,7 @@ import StudentDashboard from '../pages/student/StudentDashboard';
 import BrowseClasses from '../pages/student/BrowseClasses';
 import TeacherDashboard from '../pages/teacher/TeacherDashboard';
 import TeacherClasses from '../pages/teacher/TeacherClasses';
-import TeacherApply from '../pages/teacher/TeacherApply';
+import TeacherProfile from '../pages/teacher/TeacherProfile';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminTeachersPage from '../pages/admin/AdminTeachersPage';
 import PaymentPage from '../pages/payment/PaymentPage';
@@ -57,7 +57,7 @@ const AppRoutes: React.FC = () => {
         <Route element={<ProtectedRoute allowedRoles={['TEACHER']} />}>
           <Route path="/teacher" element={<TeacherDashboard />} />
           <Route path="/teacher/classes" element={<TeacherClasses />} />
-          <Route path="/teacher/apply" element={<TeacherApply />} />
+          <Route path="/teacher/profile" element={<TeacherProfile />} />
           <Route path="/teacher/live" element={<TeacherStreamPage />} />
         </Route>
 

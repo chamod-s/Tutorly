@@ -1,4 +1,5 @@
 import prisma from '../../config/database';
+import { NotFoundError, ForbiddenError } from '../../middleware/errorHandler';
 
 export class VideoService {
   async createVideo(
@@ -76,6 +77,39 @@ export class VideoService {
       },
       orderBy: { createdAt: 'desc' }
     });
+  }
+
+  async updateVideo(
+    videoId: string,
+    teacherUserId: string,
+    data: {
+      title?: string;
+      description?: string;
+      courseId?: string | null;
+      status?: string;
+    }
+  ) {
+    const video = await prisma.video.findUnique({ where: { id: videoId } });
+    if (!video) throw new NotFoundError('Video not found');
+    if (video.teacherId !== teacherUserId) throw new ForbiddenError('You do not own this video');
+
+    return prisma.video.update({
+      where: { id: videoId },
+      data: {
+        title: data.title,
+        description: data.description,
+        courseId: data.courseId === '' ? null : data.courseId,
+        status: data.status,
+      },
+    });
+  }
+
+  async deleteVideo(videoId: string, teacherUserId: string) {
+    const video = await prisma.video.findUnique({ where: { id: videoId } });
+    if (!video) throw new NotFoundError('Video not found');
+    if (video.teacherId !== teacherUserId) throw new ForbiddenError('You do not own this video');
+
+    return prisma.video.delete({ where: { id: videoId } });
   }
 }
 

@@ -88,4 +88,68 @@ export class TeacherController {
     const result = await teacherService.getEarnings(req.user.id);
     sendSuccess(res, result, 'Earnings fetched');
   });
+
+  /**
+   * PUT /teachers/me — Update own teacher profile (TEACHER)
+   */
+  static updateProfile = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new UnauthorizedError();
+
+    const uploadedFiles = req.files as {
+      profileImage?: Express.Multer.File[];
+    } | undefined;
+
+    const profileImageUrl = uploadedFiles?.profileImage?.[0]
+      ? buildFileUrl(req, uploadedFiles.profileImage[0].path)
+      : undefined;
+
+    const { firstName, lastName, phone, bio, experience, subjects, qualifications } = req.body;
+
+    const parsedSubjects = subjects ? (typeof subjects === 'string' ? JSON.parse(subjects) : subjects) : undefined;
+    const parsedQualifications = qualifications ? (typeof qualifications === 'string' ? JSON.parse(qualifications) : qualifications) : undefined;
+    const parsedExperience = experience ? parseInt(experience, 10) : undefined;
+
+    const prisma = (await import('../../config/database')).default;
+
+    // Update User details
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        ...(firstName !== undefined && { firstName }),
+        ...(lastName !== undefined && { lastName }),
+        ...(phone !== undefined && { phone }),
+        ...(profileImageUrl && { avatar: profileImageUrl }),
+      },
+    });
+
+    // Update TeacherProfile details
+    await prisma.teacherProfile.update({
+      where: { userId: req.user.id },
+      data: {
+        ...(bio !== undefined && { bio }),
+        ...(parsedSubjects !== undefined && { subjects: parsedSubjects }),
+        ...(parsedQualifications !== undefined && { qualifications: parsedQualifications }),
+        ...(parsedExperience !== undefined && { experience: parsedExperience }),
+        ...(profileImageUrl && { profileImage: profileImageUrl }),
+      },
+    });
+
+    // Fetch updated user with profile
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true, email: true, role: true,
+        firstName: true, lastName: true, avatar: true, phone: true,
+        teacherProfile: {
+          select: {
+            id: true, bio: true, subjects: true, qualifications: true,
+            experience: true, profileImage: true, isVerified: true,
+            approvalStatus: true,
+          }
+        },
+      },
+    });
+
+    sendSuccess(res, updatedUser, 'Profile updated successfully');
+  });
 }

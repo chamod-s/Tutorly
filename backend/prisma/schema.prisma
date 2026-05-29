@@ -345,6 +345,9 @@ model LiveStream {
   isPublic    Boolean      @default(true)
   price       Float        @default(0)
   viewerCount Int          @default(0)
+  isPaused    Boolean      @default(false)
+  chatEnabled Boolean      @default(true)
+  slowMode    Boolean      @default(false)
   scheduledAt DateTime?
   startedAt   DateTime?
   endedAt     DateTime?

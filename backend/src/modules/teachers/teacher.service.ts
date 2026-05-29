@@ -47,7 +47,7 @@ export class TeacherService {
       where: { userId },
       include: {
         user: {
-          select: { id: true, firstName: true, lastName: true, avatar: true, email: true },
+          select: { id: true, firstName: true, lastName: true, avatar: true, email: true, phone: true },
         },
         courses: {
           where: { isPublished: true },

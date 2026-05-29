@@ -13,6 +13,7 @@ router.get('/:userId', TeacherController.getTeacher);
 // ─── Teacher self-service ─────────────────────────────────────
 // POST /teachers/apply — submit application with file uploads
 router.post('/apply',      authenticate, requireTeacher, uploadTeacherFiles, TeacherController.submitApplication);
+router.put('/me',          authenticate, requireTeacher, uploadTeacherFiles, TeacherController.updateProfile);
 router.get('/me/earnings', authenticate, requireTeacher, TeacherController.getEarnings);
 
 // ─── Admin approval workflow ──────────────────────────────────

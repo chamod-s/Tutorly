@@ -41,7 +41,9 @@ const upload = multer({
 });
 
 router.post('/upload', authenticate, requireTeacher, upload.single('video'), VideoController.upload);
-router.get('/my', authenticate, requireTeacher, VideoController.myVideos);
-router.get('/', authenticate, VideoController.listForStudent);
+router.get('/my',      authenticate, requireTeacher, VideoController.myVideos);
+router.get('/',        authenticate, VideoController.listForStudent);
+router.patch('/:id',   authenticate, requireTeacher, VideoController.update);
+router.delete('/:id',  authenticate, requireTeacher, VideoController.delete);
 
 export default router;

@@ -174,6 +174,38 @@ export class StreamService {
     if (!stream) throw new NotFoundError('Stream not found');
     return stream;
   }
+
+  async updateStream(
+    streamId: string,
+    teacherUserId: string,
+    data: {
+      title?: string;
+      description?: string;
+      isPublic?: boolean;
+      chatEnabled?: boolean;
+      slowMode?: boolean;
+    }
+  ) {
+    const stream = await prisma.liveStream.findUnique({ where: { id: streamId } });
+    if (!stream) throw new NotFoundError('Stream not found');
+    if (stream.teacherId !== teacherUserId) throw new ForbiddenError('Not your stream');
+
+    return prisma.liveStream.update({
+      where: { id: streamId },
+      data,
+    });
+  }
+
+  async togglePause(streamId: string, teacherUserId: string, isPaused: boolean) {
+    const stream = await prisma.liveStream.findUnique({ where: { id: streamId } });
+    if (!stream) throw new NotFoundError('Stream not found');
+    if (stream.teacherId !== teacherUserId) throw new ForbiddenError('Not your stream');
+
+    return prisma.liveStream.update({
+      where: { id: streamId },
+      data: { isPaused },
+    });
+  }
 }
 
 export const streamService = new StreamService();

@@ -26,6 +26,12 @@ export class EnrollmentController {
     sendSuccess(res, list, 'Students fetched');
   });
 
+  static teacherStudents = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new UnauthorizedError();
+    const list = await enrollmentService.getTeacherStudents(req.user.id);
+    sendSuccess(res, list, 'Teacher students fetched');
+  });
+
   static cancel = asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) throw new UnauthorizedError();
     await enrollmentService.cancelEnrollment(req.user.id, req.params.courseId);

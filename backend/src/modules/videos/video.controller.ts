@@ -43,4 +43,22 @@ export class VideoController {
     const videos = await videoService.getStudentVideos(req.user.id);
     sendSuccess(res, videos, 'Videos fetched successfully');
   });
+
+  static update = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new UnauthorizedError();
+    const { title, description, courseId, status } = req.body;
+    const video = await videoService.updateVideo(req.params.id, req.user.id, {
+      title,
+      description,
+      courseId,
+      status
+    });
+    sendSuccess(res, video, 'Video updated successfully');
+  });
+
+  static delete = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new UnauthorizedError();
+    await videoService.deleteVideo(req.params.id, req.user.id);
+    sendSuccess(res, null, 'Video deleted successfully');
+  });
 }
