@@ -59,7 +59,7 @@ const CourseCard: React.FC<{ course: any; onEnroll: (course: any) => void }> = (
               </div>
               {course.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {course.tags.map((t, i) => <span key={i} className="px-2.5 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full">{t}</span>)}
+                  {course.tags.map((t: string, i: number) => <span key={i} className="px-2.5 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full">{t}</span>)}
                 </div>
               )}
               <div className="flex gap-3 pt-2">

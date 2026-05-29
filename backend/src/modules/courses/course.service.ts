@@ -135,6 +135,7 @@ export class CourseService {
       tags?: string[];
       category?: string;
       thumbnail?: string;
+      isPublished?: boolean;
     },
   ) {
     const profile = await prisma.teacherProfile.findUnique({

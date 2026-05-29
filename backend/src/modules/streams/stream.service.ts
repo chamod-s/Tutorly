@@ -16,6 +16,7 @@ export class StreamService {
       isPublic?: boolean;
       price?: number;
       scheduledAt?: Date;
+      courseId?: string;
     },
   ) {
     const stream = await prisma.liveStream.create({

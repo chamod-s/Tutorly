@@ -5,27 +5,34 @@ export class LessonService {
   // ── Get lessons for a course ───────────────────────────────
 
   async getCourseLessons(courseId: string, userId?: string) {
-    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: { teacher: true },
+    });
     if (!course) throw new NotFoundError('Course not found');
 
+    const isTeacher = userId ? course.teacher.userId === userId : false;
+
     let isEnrolled = false;
-    if (userId) {
+    if (userId && !isTeacher) {
       const enrollment = await prisma.enrollment.findUnique({
         where: { studentId_courseId: { studentId: userId, courseId } },
       });
       isEnrolled = enrollment?.status === 'ACTIVE';
     }
 
+    const where = isTeacher ? { courseId } : { courseId, isPublished: true };
+
     const lessons = await prisma.lesson.findMany({
-      where: { courseId, isPublished: true },
+      where,
       orderBy: { order: 'asc' },
     });
 
     // Mask video URLs for non-enrolled students
     return lessons.map((l) => ({
       ...l,
-      videoUrl: isEnrolled || l.isFree ? l.videoUrl : null,
-      hlsUrl: isEnrolled || l.isFree ? l.hlsUrl : null,
+      videoUrl: isTeacher || isEnrolled || l.isFree ? l.videoUrl : null,
+      hlsUrl: isTeacher || isEnrolled || l.isFree ? l.hlsUrl : null,
     }));
   }
 

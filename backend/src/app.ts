@@ -23,6 +23,7 @@ import paymentRoutes      from './modules/payments/payment.routes';
 import streamRoutes       from './modules/streams/stream.routes';
 import notificationRoutes from './modules/notifications/notification.routes';
 import analyticsRoutes    from './modules/analytics/analytics.routes';
+import videoRoutes        from './modules/videos/video.routes';
 
 // ─── App factory ──────────────────────────────────────────────
 
@@ -117,6 +118,7 @@ export const createApp = (): Application => {
   app.use(`${API}/streams`,       streamRoutes);
   app.use(`${API}/notifications`, notificationRoutes);
   app.use(`${API}/analytics`,     analyticsRoutes);
+  app.use(`${API}/videos`,        videoRoutes);
 
   // ── 404 handler ────────────────────────────────────────────
   app.use(notFoundHandler);

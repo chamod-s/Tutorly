@@ -121,6 +121,7 @@ model User {
   liveStreams     LiveStream[]
   chatRooms       ChatRoomParticipant[]
   reviews         Review[]
+  videos          Video[]
 
   @@index([email])
   @@index([role])
@@ -206,6 +207,8 @@ model Course {
   subscriptions Subscription[]
   chatRoom      ChatRoom?
   reviews       Review[]
+  liveStreams   LiveStream[]
+  videos        Video[]
 
   @@index([teacherId])
   @@index([type])
@@ -331,6 +334,7 @@ model Payment {
 model LiveStream {
   id          String       @id @default(uuid())
   teacherId   String
+  courseId    String?
   title       String
   description String?      @db.Text
   thumbnail   String?
@@ -348,6 +352,7 @@ model LiveStream {
   updatedAt   DateTime     @updatedAt
 
   teacher  User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course   Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   chatRoom ChatRoom?
 
   @@index([teacherId])
@@ -459,4 +464,22 @@ model AnalyticsEvent {
   @@index([eventType])
   @@index([createdAt])
   @@map("analytics_events")
+}
+
+model Video {
+  id           String   @id @default(uuid())
+  teacherId    String
+  courseId     String?
+  title        String
+  description  String?  @db.Text
+  videoUrl     String
+  duration     String?  @default("0m")
+  views        Int      @default(0)
+  status       String   @default("PUBLISHED")
+  createdAt    DateTime @default(now())
+
+  teacher      User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course       Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@map("videos")
 }

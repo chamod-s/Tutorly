@@ -6,7 +6,7 @@ import HlsPlayer from '../../components/stream/HlsPlayer';
 import {
   BookOpen, Video, CreditCard, User, LayoutDashboard,
   PlayCircle, Clock, Award, Calendar, CheckCircle2,
-  ChevronRight, Loader2, Star
+  ChevronRight, Loader2, Star, X
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -255,10 +255,13 @@ const ClassesTab: React.FC<ClassesTabProps> = ({ enrolledCourses, allCourses, on
 interface VideosTabProps {
   enrolledCourses: any[];
   allCourses: any[];
+  videos: any[];
   onNavigateToPayment: (course: any) => void;
 }
 
-const VideosTab: React.FC<VideosTabProps> = ({ enrolledCourses, allCourses, onNavigateToPayment }) => {
+const VideosTab: React.FC<VideosTabProps> = ({ enrolledCourses, allCourses, videos, onNavigateToPayment }) => {
+  const [playingVideo, setPlayingVideo] = useState<any | null>(null);
+
   // Purchased video series (ONE_TIME courses that are enrolled)
   const purchased = allCourses.filter(c => c.type === 'ONE_TIME' && enrolledCourses.some(e => e.id === c.id));
   
@@ -267,6 +270,54 @@ const VideosTab: React.FC<VideosTabProps> = ({ enrolledCourses, allCourses, onNa
 
   return (
     <div className="space-y-8">
+      {/* Dynamic Class Lectures & Videos */}
+      <div>
+        <h2 className="text-xl font-bold text-slate-900 mb-4">Class Lectures & Videos</h2>
+        {videos.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-500 text-sm">
+            No class lectures or uploaded videos are shared with you yet.
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {videos.map((vid) => (
+              <div 
+                key={vid.id} 
+                onClick={() => setPlayingVideo(vid)}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between"
+              >
+                <div>
+                  <div className="h-40 bg-gradient-to-br from-teal-900 to-slate-900 flex items-center justify-center relative">
+                    <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <PlayCircle className="w-8 h-8 text-white" />
+                    </div>
+                    {vid.course && (
+                      <span className="absolute top-3 left-3 bg-teal-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        {vid.course.title}
+                      </span>
+                    )}
+                    <span className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                      {vid.duration || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="p-4 space-y-1 text-left">
+                    <p className="font-semibold text-slate-900 text-sm leading-snug truncate">{vid.title}</p>
+                    <p className="text-xs text-slate-500">by {vid.teacher?.firstName} {vid.teacher?.lastName}</p>
+                    {vid.description && (
+                      <p className="text-xs text-slate-400 line-clamp-2 mt-1.5 leading-relaxed">{vid.description}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="p-4 pt-0 text-left">
+                  <button className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 group-hover:bg-teal-50 group-hover:border-teal-200 group-hover:text-teal-700 py-2 rounded-lg text-slate-600 transition-colors text-center">
+                    Watch Lecture
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Purchased */}
       <div>
         <h2 className="text-xl font-bold text-slate-900 mb-4">My Purchased Videos</h2>
@@ -285,7 +336,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ enrolledCourses, allCourses, onNa
                 </div>
                 <div className="p-4">
                   <p className="font-semibold text-slate-900 text-sm leading-snug truncate">{v.title}</p>
-                  <p className="text-xs text-slate-500 mt-1">by {v.teacher?.user?.firstName} {v.teacher?.user?.lastName}</p>
+                  <p className="text-xs text-slate-500">by {v.teacher?.user?.firstName} {v.teacher?.user?.lastName}</p>
                 </div>
               </div>
             ))}
@@ -330,6 +381,44 @@ const VideosTab: React.FC<VideosTabProps> = ({ enrolledCourses, allCourses, onNa
           </div>
         )}
       </div>
+
+      {playingVideo && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 text-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-950">
+              <div className="min-w-0">
+                <span className="text-xs font-semibold text-teal-400 uppercase tracking-wider">Now Playing</span>
+                <h3 className="text-base font-bold truncate mt-0.5">{playingVideo.title}</h3>
+              </div>
+              <button 
+                onClick={() => setPlayingVideo(null)} 
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="aspect-video bg-black flex items-center justify-center">
+              <video 
+                src={playingVideo.videoUrl} 
+                controls 
+                autoPlay 
+                className="w-full h-full object-contain"
+              />
+            </div>
+            
+            <div className="p-6 bg-slate-950 text-left space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Uploaded by: <strong className="text-slate-200">{playingVideo.teacher?.firstName} {playingVideo.teacher?.lastName}</strong></span>
+                {playingVideo.course && <span className="bg-teal-900/50 text-teal-400 px-2 py-0.5 rounded font-semibold">{playingVideo.course.title}</span>}
+              </div>
+              <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                {playingVideo.description || 'No description provided.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -586,6 +675,7 @@ const StudentDashboard: React.FC = () => {
   const [allCourses, setAllCourses] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [liveStreams, setLiveStreams] = useState<any[]>([]);
+  const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
 
@@ -617,10 +707,23 @@ const StudentDashboard: React.FC = () => {
       const coursesRes = await apiClient.get('/courses');
       setAllCourses(coursesRes.data.data || []);
 
+      // Fetch student videos
+      const videosRes = await apiClient.get('/videos').catch(() => ({ data: { data: [] } }));
+      setVideos(videosRes.data.data || []);
+
       // Fetch active/scheduled streams
       const streamsRes = await apiClient.get('/streams');
       const streams = streamsRes.data.data || [];
-      setLiveStreams(streams.filter((s: any) => s.status === 'LIVE' || s.status === 'SCHEDULED'));
+      const enrolledCourseIds = mappedEnrolled.map((c: any) => c.id);
+      const filteredStreams = streams.filter((s: any) => {
+        const isLiveOrScheduled = s.status === 'LIVE' || s.status === 'SCHEDULED';
+        if (!isLiveOrScheduled) return false;
+        if (s.courseId) {
+          return enrolledCourseIds.includes(s.courseId);
+        }
+        return true;
+      });
+      setLiveStreams(filteredStreams);
 
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
@@ -726,6 +829,7 @@ const StudentDashboard: React.FC = () => {
           <VideosTab 
             enrolledCourses={enrolledCourses} 
             allCourses={allCourses} 
+            videos={videos}
             onNavigateToPayment={onNavigateToPayment} 
           />
         )}

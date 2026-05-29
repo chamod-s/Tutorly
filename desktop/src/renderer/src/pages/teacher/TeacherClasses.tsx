@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Edit2, Trash2, Eye, EyeOff, X, Check, DollarSign, Tag, Globe, Loader2 } from 'lucide-react';
 import { apiClient } from '../../api/client';
+import { LessonManagerModal } from '../../components/teacher/LessonManagerModal';
 
 type CourseType = 'SUBSCRIPTION' | 'ONE_TIME';
 type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
@@ -24,7 +25,7 @@ interface Course {
   };
 }
 
-const EMPTY = {
+export const EMPTY = {
   title: '',
   shortDesc: '',
   description: '',
@@ -48,15 +49,22 @@ const LEVEL_COLORS: Record<CourseLevel, string> = {
 };
 
 // ── Course Form ───────────────────────────────────────────────
-const CourseForm: React.FC<{
+export const CourseForm: React.FC<{
   initial: typeof EMPTY;
   onSave: (data: typeof EMPTY) => void;
   onCancel: () => void;
   title: string;
-}> = ({ initial, onSave, onCancel, title }) => {
+  categoriesList?: string[];
+}> = ({ initial, onSave, onCancel, title, categoriesList = [] }) => {
   const [form, setForm] = useState(initial);
   const [tagInput, setTagInput] = useState('');
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
+
+  const DEFAULT_CATEGORIES = ['Mathematics', 'Science', 'Programming', 'Languages', 'Design'];
+  const allCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...categoriesList]));
+  
+  const isCustomCategory = form.category && !allCategories.includes(form.category);
+  const [useCustom, setUseCustom] = useState(isCustomCategory);
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -114,7 +122,31 @@ const CourseForm: React.FC<{
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
-              <input className="input-field" value={form.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Science" />
+              {useCustom ? (
+                <div className="flex gap-2">
+                  <input className="input-field flex-1" value={form.category} onChange={e => set('category', e.target.value)} placeholder="Type custom category..." />
+                  <button type="button" onClick={() => { setUseCustom(false); set('category', allCategories[0] || 'Mathematics'); }} className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs">Select</button>
+                </div>
+              ) : (
+                <select 
+                  className="input-field" 
+                  value={form.category} 
+                  onChange={e => {
+                    if (e.target.value === '__custom__') {
+                      setUseCustom(true);
+                      set('category', '');
+                    } else {
+                      set('category', e.target.value);
+                    }
+                  }}
+                >
+                  <option value="" disabled>Select a category</option>
+                  {allCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                  <option value="__custom__">+ Add Custom Category...</option>
+                </select>
+              )}
             </div>
           </div>
 
@@ -149,7 +181,7 @@ const CourseForm: React.FC<{
 };
 
 // ── Delete Confirm ────────────────────────────────────────────
-const DeleteModal: React.FC<{ title: string; onConfirm: () => void; onCancel: () => void }> = ({ title, onConfirm, onCancel }) => (
+export const DeleteModal: React.FC<{ title: string; onConfirm: () => void; onCancel: () => void }> = ({ title, onConfirm, onCancel }) => (
   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
       <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 className="w-7 h-7 text-red-500" /></div>
@@ -170,6 +202,7 @@ const TeacherClasses: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [manageCourse, setManageCourse] = useState<{ id: string; title: string } | null>(null);
 
   const fetchMyCourses = async () => {
     try {
@@ -200,6 +233,7 @@ const TeacherClasses: React.FC = () => {
         language: data.language,
         category: data.category,
         tags: data.tags,
+        isPublished: true, // Default to published so it instantly appears for students
       });
       fetchMyCourses();
       setShowCreate(false);
@@ -261,19 +295,33 @@ const TeacherClasses: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {showCreate && <CourseForm title="Create New Class" initial={EMPTY} onSave={handleCreate} onCancel={() => setShowCreate(false)} />}
+      {showCreate && (
+        <CourseForm 
+          title="Create New Class" 
+          initial={EMPTY} 
+          categoriesList={courses.map(c => c.category).filter((c): c is string => !!c)}
+          onSave={handleCreate} 
+          onCancel={() => setShowCreate(false)} 
+        />
+      )}
       {editId && editingCourse && (
-        <CourseForm title="Edit Class" initial={{
-          title: editingCourse.title || '',
-          shortDesc: editingCourse.shortDesc || '',
-          description: editingCourse.description || '',
-          price: editingCourse.price || 0,
-          type: editingCourse.type || 'SUBSCRIPTION',
-          level: editingCourse.level || 'BEGINNER',
-          language: editingCourse.language || 'Sinhala',
-          category: editingCourse.category || '',
-          tags: editingCourse.tags || [],
-        } as typeof EMPTY} onSave={handleEdit} onCancel={() => setEditId(null)} />
+        <CourseForm 
+          title="Edit Class" 
+          categoriesList={courses.map(c => c.category).filter((c): c is string => !!c)}
+          initial={{
+            title: editingCourse.title || '',
+            shortDesc: editingCourse.shortDesc || '',
+            description: editingCourse.description || '',
+            price: editingCourse.price || 0,
+            type: editingCourse.type || 'SUBSCRIPTION',
+            level: editingCourse.level || 'BEGINNER',
+            language: editingCourse.language || 'Sinhala',
+            category: editingCourse.category || '',
+            tags: editingCourse.tags || [],
+          } as typeof EMPTY} 
+          onSave={handleEdit} 
+          onCancel={() => setEditId(null)} 
+        />
       )}
       {deleteId && deletingCourse && <DeleteModal title={deletingCourse.title} onConfirm={handleDelete} onCancel={() => setDeleteId(null)} />}
 
@@ -332,6 +380,9 @@ const TeacherClasses: React.FC = () => {
                     <button onClick={() => setEditId(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
                       <Edit2 className="w-3.5 h-3.5" /> Edit
                     </button>
+                    <button onClick={() => setManageCourse({ id: c.id, title: c.title })} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-teal-200 text-teal-700 hover:bg-teal-50 transition-colors">
+                      <BookOpen className="w-3.5 h-3.5" /> Manage Lessons
+                    </button>
                     <button onClick={() => setDeleteId(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-colors ml-auto">
                       <Trash2 className="w-3.5 h-3.5" /> Delete
                     </button>
@@ -341,6 +392,14 @@ const TeacherClasses: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {manageCourse && (
+        <LessonManagerModal
+          courseId={manageCourse.id}
+          courseTitle={manageCourse.title}
+          onClose={() => setManageCourse(null)}
+        />
       )}
     </div>
   );
