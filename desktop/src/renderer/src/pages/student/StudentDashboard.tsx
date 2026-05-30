@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { apiClient } from '../../api/client';
@@ -6,7 +6,7 @@ import HlsPlayer from '../../components/stream/HlsPlayer';
 import {
   BookOpen, Video, CreditCard, User, LayoutDashboard,
   PlayCircle, Clock, Award, Calendar, CheckCircle2,
-  ChevronRight, Loader2, Star, X
+  ChevronRight, Loader2, Star, X, Camera
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -485,24 +485,64 @@ interface ProfileTabProps {
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ user }) => {
-  const [form, setForm] = useState({ firstName: user.firstName || '', lastName: user.lastName || '', phone: user.phone || '', grade: '' });
+  const [form, setForm] = useState({ 
+    firstName: user.firstName || '', 
+    lastName: user.lastName || '', 
+    phone: user.phone || '', 
+    grade: user.studentProfile?.grade || '' 
+  });
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const updateUser = useAuthStore((s) => s.updateUser);
 
+  // Profile image upload
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(user.avatar || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setForm({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      phone: user.phone || '',
+      grade: user.studentProfile?.grade || ''
+    });
+    setImagePreview(user.avatar || null);
+  }, [user]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await apiClient.put('/users/me/profile', {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        phone: form.phone
+      const formData = new FormData();
+      formData.append('firstName', form.firstName);
+      formData.append('lastName', form.lastName);
+      formData.append('phone', form.phone);
+      formData.append('grade', form.grade);
+
+      if (imageFile) {
+        formData.append('profileImage', imageFile);
+      }
+
+      const res = await apiClient.put('/users/me/profile', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
+
+      const updatedUser = res.data.data;
+
       // Synchronize in Zustand store so updates propagate to overview & header
       updateUser({
-        firstName: res.data.data.firstName,
-        lastName: res.data.data.lastName,
-        phone: res.data.data.phone
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        phone: updatedUser.phone,
+        avatar: updatedUser.avatar,
+        studentProfile: updatedUser.studentProfile
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -519,8 +559,29 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ user }) => {
 
       {/* Avatar */}
       <div className="flex items-center gap-5">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-3xl font-bold shrink-0">
-          {user.firstName?.[0]}{user.lastName?.[0]}
+        <div className="relative group">
+          <div className="w-20 h-20 rounded-full border border-slate-100 bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-3xl font-bold shrink-0 overflow-hidden shadow-inner">
+            {imagePreview ? (
+              <img src={imagePreview} alt="Student Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <span>{user.firstName?.[0]}{user.lastName?.[0]}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute inset-0 bg-black/40 text-white flex flex-col items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+          >
+            <Camera className="w-5 h-5 mb-0.5" />
+            <span className="text-[9px] font-semibold">Change</span>
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleImageChange}
+          />
         </div>
         <div>
           <p className="font-bold text-slate-900">{user.firstName} {user.lastName}</p>

@@ -1,6 +1,8 @@
 import prisma from '../../config/database';
 import { NotFoundError } from '../../middleware/errorHandler';
 import { parsePagination, buildPaginationMeta } from '../../utils/apiResponse';
+import { sendEmail } from '../../utils/email';
+import { logger } from '../../config/logger';
 
 export class TeacherService {
   // ── List all teachers (public) ─────────────────────────────
@@ -108,7 +110,10 @@ export class TeacherService {
   // ── Approve teacher (admin) ────────────────────────────────
 
   async approveTeacher(teacherUserId: string) {
-    const profile = await prisma.teacherProfile.findUnique({ where: { userId: teacherUserId } });
+    const profile = await prisma.teacherProfile.findUnique({
+      where: { userId: teacherUserId },
+      include: { user: true },
+    });
     if (!profile) throw new NotFoundError('Teacher profile not found');
 
     const [updatedProfile] = await prisma.$transaction([
@@ -127,13 +132,47 @@ export class TeacherService {
       }),
     ]);
 
+    // Send email notification asynchronously
+    sendEmail({
+      to: profile.user.email,
+      subject: '🎉 Tutor Application Approved - TUTORLY',
+      text: `Congratulations ${profile.user.firstName}! Your teacher application on TUTORLY has been approved. Log in to the desktop app to start creating courses and scheduling live classes.`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #6d28d9; margin-bottom: 20px;">🎉 Congratulations, ${profile.user.firstName}!</h2>
+          <p style="font-size: 16px; color: #333; line-height: 1.6;">
+            We are thrilled to inform you that your tutor application on <strong>TUTORLY</strong> has been approved!
+          </p>
+          <p style="font-size: 15px; color: #555; line-height: 1.6;">
+            Your profile is now verified. You have full access to the tutor panel where you can:
+          </p>
+          <ul style="font-size: 15px; color: #555; line-height: 1.6;">
+            <li>Create and publish video courses</li>
+            <li>Schedule and host live stream classes</li>
+            <li>Interact with your students</li>
+            <li>Manage and withdraw your earnings</li>
+          </ul>
+          <p style="font-size: 15px; color: #555; line-height: 1.6;">
+            Simply open the desktop app and log in to start teaching.
+          </p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="font-size: 12px; color: #aaa; text-align: center;">TUTORLY Platform. All rights reserved.</p>
+        </div>
+      `,
+    }).catch(err => {
+      logger.error('Email dispatch failed', err);
+    });
+
     return updatedProfile;
   }
 
   // ── Reject teacher (admin) ─────────────────────────────────
 
   async rejectTeacher(teacherUserId: string, reason: string) {
-    const profile = await prisma.teacherProfile.findUnique({ where: { userId: teacherUserId } });
+    const profile = await prisma.teacherProfile.findUnique({
+      where: { userId: teacherUserId },
+      include: { user: true },
+    });
     if (!profile) throw new NotFoundError('Teacher profile not found');
 
     const [updatedProfile] = await prisma.$transaction([
@@ -151,6 +190,35 @@ export class TeacherService {
         },
       }),
     ]);
+
+    // Send email notification asynchronously
+    sendEmail({
+      to: profile.user.email,
+      subject: 'Tutor Application Update - Action Required',
+      text: `Hi ${profile.user.firstName}, your tutor application requires updates. Feedback: "${reason}". Please log in, go to your profile, make changes, and resubmit.`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #e11d48; margin-bottom: 20px;">Hi ${profile.user.firstName},</h2>
+          <p style="font-size: 16px; color: #333; line-height: 1.6;">
+            Thank you for applying to teach on <strong>TUTORLY</strong>. Our team has reviewed your application.
+          </p>
+          <p style="font-size: 15px; color: #333; line-height: 1.6;">
+            Currently, your application requires some changes before we can verify your profile.
+          </p>
+          <div style="background-color: #fff1f2; border: 1px solid #ffe4e6; padding: 15px; border-radius: 8px; margin: 20px 0; color: #9f1239;">
+            <strong>Feedback from Admin:</strong><br>
+            "${reason}"
+          </div>
+          <p style="font-size: 15px; color: #555; line-height: 1.6;">
+            Please log in to the desktop app, go to your <strong>Tutor Profile</strong> page, update the requested details, and resubmit for review.
+          </p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="font-size: 12px; color: #aaa; text-align: center;">TUTORLY Platform. All rights reserved.</p>
+        </div>
+      `,
+    }).catch(err => {
+      logger.error('Email dispatch failed', err);
+    });
 
     return updatedProfile;
   }
@@ -174,7 +242,15 @@ export class TeacherService {
     const profile = await prisma.teacherProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundError('Teacher profile not found');
 
-    return prisma.teacherProfile.update({ where: { userId }, data });
+    const updateData: any = { ...data };
+    if (profile.approvalStatus === 'REJECTED') {
+      updateData.approvalStatus = 'PENDING';
+      updateData.submittedAt = new Date();
+      updateData.isVerified = false;
+      updateData.rejectionReason = null;
+    }
+
+    return prisma.teacherProfile.update({ where: { userId }, data: updateData });
   }
 
   // ── Get teacher earnings ───────────────────────────────────

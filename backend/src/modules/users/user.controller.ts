@@ -3,6 +3,7 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import { sendSuccess, sendCreated, sendNoContent } from '../../utils/apiResponse';
 import { userService } from './user.service';
 import { UnauthorizedError } from '../../middleware/errorHandler';
+import { buildFileUrl } from '../../middleware/upload.middleware';
 
 export class UserController {
   static list = asyncHandler(async (req: Request, res: Response) => {
@@ -17,7 +18,17 @@ export class UserController {
 
   static updateProfile = asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) throw new UnauthorizedError();
-    const user = await userService.updateProfile(req.user.id, req.body);
+
+    const profileImageUrl = req.file
+      ? buildFileUrl(req, req.file.path)
+      : undefined;
+
+    const updateData = {
+      ...req.body,
+      ...(profileImageUrl && { avatar: profileImageUrl }),
+    };
+
+    const user = await userService.updateProfile(req.user.id, updateData);
     sendSuccess(res, user, 'Profile updated');
   });
 

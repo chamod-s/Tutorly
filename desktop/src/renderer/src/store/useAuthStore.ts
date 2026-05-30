@@ -3,6 +3,22 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type Role = 'STUDENT' | 'TEACHER' | 'ADMIN' | null;
 
+export interface TeacherProfile {
+  id: string;
+  bio: string | null;
+  subjects: string[];
+  qualifications: string[];
+  experience: number;
+  approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  isVerified: boolean;
+  rejectionReason: string | null;
+}
+
+export interface StudentProfile {
+  id: string;
+  grade: string | null;
+}
+
 interface User {
   id: string;
   email: string;
@@ -11,6 +27,8 @@ interface User {
   role: Role;
   avatar?: string;
   phone?: string;
+  teacherProfile?: TeacherProfile | null;
+  studentProfile?: StudentProfile | null;
 }
 
 interface AuthState {

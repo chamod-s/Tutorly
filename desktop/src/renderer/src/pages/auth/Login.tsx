@@ -28,7 +28,8 @@ const Login: React.FC = () => {
         firstName: response.user.firstName,
         lastName: response.user.lastName,
         role: response.user.role,
-        avatar: response.user.avatar
+        avatar: response.user.avatar,
+        teacherProfile: response.user.teacherProfile
       }, response.tokens.accessToken);
 
       // Redirect based on role

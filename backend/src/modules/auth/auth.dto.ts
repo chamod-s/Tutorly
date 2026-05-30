@@ -15,6 +15,10 @@ export const registerSchema = z.object({
     role: z.enum(['STUDENT', 'TEACHER', 'ADMIN']).default('STUDENT'),
     phone: z.string().min(10, 'Phone number must be at least 10 digits'),
     grade: z.string().optional(),
+    bio: z.string().optional(),
+    subjects: z.array(z.string()).optional(),
+    qualifications: z.array(z.string()).optional(),
+    experience: z.number().optional(),
   }),
 });
 

@@ -10,6 +10,16 @@ export interface LoginResponse {
     firstName: string;
     lastName: string;
     avatar?: string;
+    teacherProfile?: {
+      id: string;
+      bio: string | null;
+      subjects: string[];
+      qualifications: string[];
+      experience: number;
+      approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+      isVerified: boolean;
+      rejectionReason: string | null;
+    } | null;
   };
   tokens: {
     accessToken: string;
@@ -25,6 +35,10 @@ export interface RegisterPayload {
   role: string;
   phone: string;
   grade?: string;
+  bio?: string;
+  subjects?: string[];
+  qualifications?: string[];
+  experience?: number;
 }
 
 export const authService = {
@@ -33,9 +47,9 @@ export const authService = {
     return response.data.data;
   },
 
-  register: async (data: RegisterPayload): Promise<{ message: string }> => {
-    const response = await apiClient.post('/auth/register', data);
-    return response.data;
+  register: async (data: RegisterPayload): Promise<LoginResponse> => {
+    const response = await apiClient.post<{ data: LoginResponse }>('/auth/register', data);
+    return response.data.data;
   },
 
   verifyAccount: async (email: string, code: string): Promise<LoginResponse> => {

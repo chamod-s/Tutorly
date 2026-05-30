@@ -71,6 +71,14 @@ export const uploadTeacherFiles = multer({
   { name: 'documents',    maxCount: 5 },
 ]);
 
+export const uploadProfileImage = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB
+  },
+}).single('profileImage');
+
 // ─── Helper: build public URLs for stored files ───────────────
 
 export const buildFileUrl = (req: Request, filePath: string): string => {

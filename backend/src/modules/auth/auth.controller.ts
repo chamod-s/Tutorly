@@ -23,9 +23,9 @@ export class AuthController {
    */
   static register = asyncHandler(async (req: Request, res: Response) => {
     const dto = registerSchema.parse({ body: req.body }).body;
-    await authService.register(dto);
+    const result = await authService.register(dto);
 
-    sendSuccess(res, null, 'Account created. Please check your email for the verification OTP.');
+    sendSuccess(res, result, 'Registration successful');
   });
 
   /**

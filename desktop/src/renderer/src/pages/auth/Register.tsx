@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../api/auth.service';
-import { User, Mail, Lock, Phone, GraduationCap, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
+import { User, Mail, Lock, Phone, GraduationCap, ArrowRight, AlertCircle, Loader2, BookOpen, Award, Briefcase, FileText } from 'lucide-react';
 import { AxiosError } from 'axios';
+
+const GRADES = [
+  'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5',
+  'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
+  'Grade 11', 'A/L 2025', 'A/L 2026', 'A/L 2027'
+];
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
+  const login = useAuthStore((state) => state.login);
+  
+  const [activeTab, setActiveTab] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -14,8 +24,11 @@ const Register: React.FC = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'STUDENT',
-    grade: ''
+    grade: 'Grade 11',
+    bio: '',
+    subjectsRaw: '',
+    qualificationsRaw: '',
+    experience: ''
   });
   
   const [error, setError] = useState('');
@@ -25,7 +38,7 @@ const Register: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    // 1. Frontend validation: Password Match
+    // Password Match check
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -34,23 +47,53 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await authService.register({
+      // Prepare payload
+      const payload: any = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
-        role: formData.role,
-        grade: formData.role === 'STUDENT' ? formData.grade : undefined
-      });
+        role: activeTab,
+      };
+
+      if (activeTab === 'STUDENT') {
+        payload.grade = formData.grade;
+      } else {
+        payload.bio = formData.bio;
+        payload.subjects = formData.subjectsRaw
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+        payload.qualifications = formData.qualificationsRaw
+          .split(',')
+          .map((q) => q.trim())
+          .filter((q) => q.length > 0);
+        payload.experience = parseInt(formData.experience) || 0;
+      }
+
+      const response = await authService.register(payload);
       
-      // Redirect to account verification page
-      navigate('/auth/verify-account', { state: { email: formData.email } });
+      // Save login state in store
+      login(response.user, response.tokens.accessToken);
+      
+      // Redirect immediately based on role
+      if (response.user.role === 'TEACHER') {
+        navigate('/teacher');
+      } else {
+        navigate('/student');
+      }
       
     } catch (err: unknown) {
+      console.error('Registration error:', err);
       if (err instanceof AxiosError && err.response) {
-        const msg = err.response.data.message;
-        setError(Array.isArray(msg) ? msg[0].message : (msg || 'Registration failed'));
+        const data = err.response.data;
+        if (data.errors && data.errors.length > 0) {
+          setError(data.errors[0].message);
+        } else {
+          const msg = data.message;
+          setError(Array.isArray(msg) ? msg[0].message : (msg || 'Registration failed'));
+        }
       } else {
         setError('A network error occurred. Please try again.');
       }
@@ -60,10 +103,42 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="mb-8">
+    <div className="w-full max-w-xl mx-auto">
+      <div className="mb-6 text-center">
         <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">Create an account</h2>
-        <p className="text-slate-500">Start your learning journey today.</p>
+        <p className="text-slate-500">Join the TUTORLY platform to start learning or teaching.</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 mb-6">
+        <button
+          type="button"
+          onClick={() => { setActiveTab('STUDENT'); setError(''); }}
+          className={`flex-1 py-3 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'STUDENT'
+              ? 'border-primary-500 text-primary-655 text-teal-600 border-teal-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <GraduationCap className="w-4 h-4" />
+            Student Registration
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveTab('TEACHER'); setError(''); }}
+          className={`flex-1 py-3 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'TEACHER'
+              ? 'border-primary-500 text-primary-655 text-teal-600 border-teal-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Teacher Registration
+          </div>
+        </button>
       </div>
 
       {error && (
@@ -73,7 +148,15 @@ const Register: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <h3 className="text-lg font-bold text-slate-900 mb-2 border-b pb-2 flex items-center gap-2">
+          {activeTab === 'STUDENT' ? (
+            <><GraduationCap className="w-5 h-5 text-teal-600" /> Student Profile</>
+          ) : (
+            <><BookOpen className="w-5 h-5 text-teal-600" /> Teacher Application</>
+          )}
+        </h3>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">First name</label>
@@ -111,39 +194,40 @@ const Register: React.FC = () => {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Email address</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Mail className="h-5 w-5 text-slate-400" />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Email address</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="email"
+                required
+                disabled={isLoading}
+                className="input-field pl-10"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+              />
             </div>
-            <input
-              type="email"
-              required
-              disabled={isLoading}
-              className="input-field pl-10"
-              placeholder="you@example.com"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-            />
           </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Phone Number</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Phone className="h-5 w-5 text-slate-400" />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Phone Number</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Phone className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="tel"
+                required
+                disabled={isLoading}
+                className="input-field pl-10"
+                placeholder="+94 77 123 4567"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              />
             </div>
-            <input
-              type="tel"
-              required
-              disabled={isLoading}
-              className="input-field pl-10"
-              placeholder="+94 77 123 4567"
-              value={formData.phone}
-              onChange={(e) => setFormData({...formData, phone: e.target.value})}
-            />
           </div>
         </div>
 
@@ -184,37 +268,105 @@ const Register: React.FC = () => {
             </div>
           </div>
         </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">I want to</label>
-          <div className="grid grid-cols-2 gap-4">
-            <label className={`border rounded-lg p-3 flex cursor-pointer transition-colors ${formData.role === 'STUDENT' ? 'border-primary-500 bg-primary-50' : 'border-slate-200 hover:bg-slate-50'}`}>
-              <input type="radio" name="role" value="STUDENT" className="sr-only" checked={formData.role === 'STUDENT'} onChange={() => setFormData({...formData, role: 'STUDENT'})} />
-              <div className="text-sm font-medium text-slate-900">Learn (Student)</div>
-            </label>
-            <label className={`border rounded-lg p-3 flex cursor-pointer transition-colors ${formData.role === 'TEACHER' ? 'border-primary-500 bg-primary-50' : 'border-slate-200 hover:bg-slate-50'}`}>
-              <input type="radio" name="role" value="TEACHER" className="sr-only" checked={formData.role === 'TEACHER'} onChange={() => setFormData({...formData, role: 'TEACHER'})} />
-              <div className="text-sm font-medium text-slate-900">Teach (Teacher)</div>
-            </label>
-          </div>
-        </div>
 
-        {formData.role === 'STUDENT' && (
-          <div className="animate-in fade-in slide-in-from-top-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Grade / Level</label>
+        {/* Conditional Student Fields */}
+        {activeTab === 'STUDENT' && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Select Grade / Level</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <GraduationCap className="h-5 w-5 text-slate-400" />
               </div>
-              <input
-                type="text"
-                required={formData.role === 'STUDENT'}
+              <select
+                required={activeTab === 'STUDENT'}
                 disabled={isLoading}
-                className="input-field pl-10"
-                placeholder="e.g. Grade 11, A/L 2025"
+                className="input-field pl-10 bg-white"
                 value={formData.grade}
                 onChange={(e) => setFormData({...formData, grade: e.target.value})}
-              />
+              >
+                {GRADES.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Conditional Teacher Fields */}
+        {activeTab === 'TEACHER' && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Short Biography / Bio</label>
+              <div className="relative">
+                <div className="absolute top-3 left-3 pointer-events-none">
+                  <FileText className="h-5 w-5 text-slate-400" />
+                </div>
+                <textarea
+                  required={activeTab === 'TEACHER'}
+                  disabled={isLoading}
+                  rows={3}
+                  className="input-field pl-10 pt-2.5 resize-none"
+                  placeholder="Tell students about your teaching methodology..."
+                  value={formData.bio}
+                  onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Subjects (comma-separated)</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <BookOpen className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    required={activeTab === 'TEACHER'}
+                    disabled={isLoading}
+                    className="input-field pl-10"
+                    placeholder="e.g. Mathematics, Physics"
+                    value={formData.subjectsRaw}
+                    onChange={(e) => setFormData({...formData, subjectsRaw: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Years of Experience</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Briefcase className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    required={activeTab === 'TEACHER'}
+                    disabled={isLoading}
+                    className="input-field pl-10"
+                    placeholder="e.g. 5"
+                    value={formData.experience}
+                    onChange={(e) => setFormData({...formData, experience: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Qualifications & Degrees (comma-separated)</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Award className="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  required={activeTab === 'TEACHER'}
+                  disabled={isLoading}
+                  className="input-field pl-10"
+                  placeholder="e.g. BSc in Mathematics, PGDE"
+                  value={formData.qualificationsRaw}
+                  onChange={(e) => setFormData({...formData, qualificationsRaw: e.target.value})}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -222,22 +374,22 @@ const Register: React.FC = () => {
         <button 
           type="submit" 
           disabled={isLoading}
-          className="w-full btn-primary flex justify-center items-center py-2.5 mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full btn-primary flex justify-center items-center py-2.5 mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <>
-              Sign Up
+              {activeTab === 'STUDENT' ? 'Sign Up as Student' : 'Submit Approval Request'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
         </button>
       </form>
 
-      <div className="mt-8 text-center text-sm text-slate-500">
+      <div className="mt-6 text-center text-sm text-slate-500">
         Already have an account?{' '}
-        <Link to="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
+        <Link to="/auth/login" className="font-medium text-primary-600 hover:text-primary-500 text-teal-600">
           Sign in
         </Link>
       </div>

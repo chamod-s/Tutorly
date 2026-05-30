@@ -286,6 +286,16 @@ const TeacherProfile: React.FC = () => {
         </div>
       )}
 
+      {profile?.teacherProfile?.approvalStatus === 'APPROVED' && (
+        <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm flex items-start">
+          <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-green-600 mt-0.5" />
+          <div>
+            <p className="font-semibold text-green-900">Application Approved!</p>
+            <p className="mt-0.5 text-green-700 leading-relaxed font-medium">Congratulations! Your teacher profile has been approved and verified. You now have full access to create classes, schedule live streams, and publish video courses.</p>
+          </div>
+        </div>
+      )}
+
       {profile?.teacherProfile?.approvalStatus === 'REJECTED' && profile?.teacherProfile?.rejectionReason && (
         <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-850 text-sm">
           <p className="font-semibold text-amber-900">Admin Rejection Feedback:</p>

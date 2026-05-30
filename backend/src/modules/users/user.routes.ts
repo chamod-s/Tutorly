@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { UserController } from './user.controller';
 import { authenticate } from '../../middleware/auth';
 import { requireAdmin } from '../../middleware/roleGuard';
+import { uploadProfileImage } from '../../middleware/upload.middleware';
 
 const router = Router();
 
@@ -13,6 +14,6 @@ router.patch('/:id/toggle-active', authenticate, requireAdmin, UserController.to
 router.delete('/:id',     authenticate, requireAdmin, UserController.deleteUser);
 
 // ─── Self-service routes ──────────────────────────────────────
-router.put('/me/profile', authenticate, UserController.updateProfile);
+router.put('/me/profile', authenticate, uploadProfileImage, UserController.updateProfile);
 
 export default router;

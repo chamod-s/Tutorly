@@ -65,14 +65,40 @@ export class UserService {
 
   async updateProfile(
     userId: string,
-    data: { firstName?: string; lastName?: string; phone?: string; avatar?: string },
+    data: { firstName?: string; lastName?: string; phone?: string; avatar?: string; grade?: string },
   ) {
+    const { grade, ...userData } = data;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === 'STUDENT' && grade !== undefined) {
+      await prisma.studentProfile.upsert({
+        where: { userId },
+        update: { grade },
+        create: { userId, grade },
+      });
+    }
+
     return prisma.user.update({
       where: { id: userId },
-      data,
+      data: userData,
       select: {
-        id: true, email: true, role: true,
-        firstName: true, lastName: true, avatar: true, phone: true,
+        id: true,
+        email: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
+        phone: true,
+        studentProfile: {
+          select: {
+            id: true,
+            grade: true,
+          },
+        },
       },
     });
   }

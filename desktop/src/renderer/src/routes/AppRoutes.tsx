@@ -20,14 +20,19 @@ import BrowseClasses from '../pages/student/BrowseClasses';
 import TeacherDashboard from '../pages/teacher/TeacherDashboard';
 import TeacherClasses from '../pages/teacher/TeacherClasses';
 import TeacherProfile from '../pages/teacher/TeacherProfile';
+import TeacherPendingPage from '../pages/teacher/TeacherPendingPage';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminTeachersPage from '../pages/admin/AdminTeachersPage';
 import PaymentPage from '../pages/payment/PaymentPage';
 import PaymentHistory from '../pages/payment/PaymentHistory';
 import LiveWatchPage from '../pages/stream/LiveWatchPage';
 import TeacherStreamPage from '../pages/stream/TeacherStreamPage';
+import { useAuthStore } from '../store/useAuthStore';
 
 const AppRoutes: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
+  const isApproved = user?.teacherProfile?.approvalStatus === 'APPROVED';
+
   return (
     <Routes>
       {/* Default redirect */}
@@ -55,10 +60,10 @@ const AppRoutes: React.FC = () => {
 
         {/* Teacher Routes */}
         <Route element={<ProtectedRoute allowedRoles={['TEACHER']} />}>
-          <Route path="/teacher" element={<TeacherDashboard />} />
-          <Route path="/teacher/classes" element={<TeacherClasses />} />
+          <Route path="/teacher" element={isApproved ? <TeacherDashboard /> : <TeacherPendingPage />} />
+          <Route path="/teacher/classes" element={isApproved ? <TeacherClasses /> : <Navigate to="/teacher" replace />} />
           <Route path="/teacher/profile" element={<TeacherProfile />} />
-          <Route path="/teacher/live" element={<TeacherStreamPage />} />
+          <Route path="/teacher/live" element={isApproved ? <TeacherStreamPage /> : <Navigate to="/teacher" replace />} />
         </Route>
 
         {/* Shared — authenticated students + teachers */}

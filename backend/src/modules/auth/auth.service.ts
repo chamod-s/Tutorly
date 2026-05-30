@@ -16,7 +16,7 @@ import { logger } from '../../config/logger';
 export class AuthService {
   // ── Register ───────────────────────────────────────────────
 
-  async register(dto: RegisterDto): Promise<void> {
+  async register(dto: RegisterDto): Promise<{ user: AuthenticatedUser; tokens: TokenPair }> {
     // Check duplicate email
     const existing = await prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) {
@@ -24,8 +24,6 @@ export class AuthService {
     }
 
     const passwordHash = await hashPassword(dto.password);
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
     const user = await prisma.user.create({
       data: {
@@ -35,32 +33,86 @@ export class AuthService {
         lastName: dto.lastName,
         role: dto.role,
         phone: dto.phone,
-        otpCode,
-        otpExpiresAt,
-        isVerified: false,
+        isVerified: true,
       },
-      select: { id: true, role: true, email: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
+      },
     });
 
-    // If registering as teacher — create empty profile
+    // If registering as teacher — create profile with submitted details
+    let teacherProfile = null;
     if (dto.role === 'TEACHER') {
-      await prisma.teacherProfile.create({
-        data: { userId: user.id },
+      teacherProfile = await prisma.teacherProfile.create({
+        data: {
+          userId: user.id,
+          bio: dto.bio || null,
+          subjects: dto.subjects || [],
+          qualifications: dto.qualifications || [],
+          experience: dto.experience || 0,
+          approvalStatus: 'PENDING',
+          submittedAt: new Date(),
+          isVerified: false,
+        },
+        select: {
+          id: true,
+          bio: true,
+          subjects: true,
+          qualifications: true,
+          experience: true,
+          approvalStatus: true,
+          isVerified: true,
+          rejectionReason: true,
+        }
       });
     }
 
     // If registering as student — create student profile
+    let studentProfile = null;
     if (dto.role === 'STUDENT') {
-      await prisma.studentProfile.create({
+      studentProfile = await prisma.studentProfile.create({
         data: { 
           userId: user.id,
           grade: dto.grade || null,
         },
+        select: {
+          id: true,
+          grade: true,
+        }
       });
     }
 
-    logger.info(`[SIMULATED EMAIL] Registration OTP for ${user.email} is: ${otpCode}`);
-    logger.info('New user registered, awaiting OTP verification', { userId: user.id, role: user.role });
+    // Generate tokens
+    const tokens = generateTokenPair(user.id, user.email, user.role);
+
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: tokens.refreshToken,
+        expiresAt: getRefreshTokenExpiry(),
+      },
+    });
+
+    logger.info('New user registered and auto-logged in', { userId: user.id, role: user.role });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatar: user.avatar,
+        teacherProfile: teacherProfile as any,
+        studentProfile: studentProfile as any,
+      } as any,
+      tokens,
+    };
   }
 
   // ── Verify Account Registration ────────────────────────────
@@ -138,6 +190,24 @@ export class AuthService {
         lastName: true,
         avatar: true,
         isActive: true,
+        teacherProfile: {
+          select: {
+            id: true,
+            bio: true,
+            subjects: true,
+            qualifications: true,
+            experience: true,
+            approvalStatus: true,
+            isVerified: true,
+            rejectionReason: true,
+          },
+        },
+        studentProfile: {
+          select: {
+            id: true,
+            grade: true,
+          },
+        },
       },
     });
 
@@ -189,7 +259,9 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         avatar: user.avatar,
-      },
+        teacherProfile: user.teacherProfile as any,
+        studentProfile: user.studentProfile as any,
+      } as any,
       tokens,
     };
   }
@@ -280,7 +352,7 @@ export class AuthService {
 
   // ── Get current user ───────────────────────────────────────
 
-  async getMe(userId: string): Promise<AuthenticatedUser & { teacherProfile?: unknown }> {
+  async getMe(userId: string): Promise<AuthenticatedUser & { teacherProfile?: unknown; studentProfile?: unknown }> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -302,6 +374,14 @@ export class AuthService {
             totalStudents: true,
             totalCourses: true,
             isVerified: true,
+            approvalStatus: true,
+            rejectionReason: true,
+          },
+        },
+        studentProfile: {
+          select: {
+            id: true,
+            grade: true,
           },
         },
       },

@@ -152,8 +152,12 @@ const Header: React.FC = () => {
             </p>
             <p className="text-xs text-slate-500 capitalize">{user?.role?.toLowerCase()}</p>
           </div>
-          <div className="h-9 w-9 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm border border-primary-200">
-            {user?.firstName?.[0]}{user?.lastName?.[0]}
+          <div className="h-9 w-9 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm border border-primary-200 overflow-hidden shrink-0">
+            {user?.avatar ? (
+              <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <span>{user?.firstName?.[0]}{user?.lastName?.[0]}</span>
+            )}
           </div>
         </div>
       </div>
