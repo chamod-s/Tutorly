@@ -18,6 +18,7 @@ router.post(
 // ─── Student ──────────────────────────────────────────────────
 router.post('/initiate', authenticate, PaymentController.initiate);
 router.get('/my',        authenticate, PaymentController.myPayments);
+router.get('/:id/status', authenticate, PaymentController.getStatus);
 
 // ─── Admin ────────────────────────────────────────────────────
 router.get('/',              authenticate, requireAdmin, PaymentController.listAll);

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../api/auth.service';
 import { useAuthStore } from '../../store/useAuthStore';
-import { User, Mail, Lock, Phone, GraduationCap, ArrowRight, AlertCircle, Loader2, BookOpen, Award, Briefcase, FileText } from 'lucide-react';
+import { User, Mail, Lock, Phone, GraduationCap, ArrowRight, AlertCircle, Loader2, BookOpen, Award, Briefcase, FileText, Eye, EyeOff } from 'lucide-react';
 import { AxiosError } from 'axios';
 
 const GRADES = [
@@ -33,6 +33,8 @@ const Register: React.FC = () => {
   
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,15 +241,23 @@ const Register: React.FC = () => {
                 <Lock className="h-5 w-5 text-slate-400" />
               </div>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 minLength={8}
                 disabled={isLoading}
-                className="input-field pl-10"
+                className="input-field pl-10 pr-10"
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 disabled:opacity-50"
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
           </div>
           <div>
@@ -257,14 +267,22 @@ const Register: React.FC = () => {
                 <Lock className="h-5 w-5 text-slate-400" />
               </div>
               <input
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 required
                 disabled={isLoading}
-                className="input-field pl-10"
+                className="input-field pl-10 pr-10"
                 placeholder="••••••••"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={isLoading}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 disabled:opacity-50"
+              >
+                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
           </div>
         </div>

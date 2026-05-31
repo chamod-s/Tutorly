@@ -4,12 +4,28 @@ import { sendSuccess, sendCreated } from '../../utils/apiResponse';
 import { paymentService } from './payment.service';
 import { UnauthorizedError } from '../../middleware/errorHandler';
 import type { PayhereWebhookPayload } from '../../types';
+import prisma from '../../config/database';
 
 export class PaymentController {
   static initiate = asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) throw new UnauthorizedError();
     const result = await paymentService.initiatePayment(req.user.id, req.body.courseId);
     sendCreated(res, result, 'Payment initiated');
+  });
+
+  static getStatus = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new UnauthorizedError();
+    const payment = await prisma.payment.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!payment) {
+      res.status(404).json({ message: 'Payment not found' });
+      return;
+    }
+    if (payment.userId !== req.user.id && req.user.role !== 'ADMIN') {
+      throw new UnauthorizedError('Unauthorized');
+    }
+    sendSuccess(res, { status: payment.status }, 'Payment status fetched');
   });
 
   /**

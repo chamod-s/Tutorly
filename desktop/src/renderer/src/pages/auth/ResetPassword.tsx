@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { authService } from '../../api/auth.service';
-import { Lock, ArrowRight, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { Lock, ArrowRight, AlertCircle, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { AxiosError } from 'axios';
 
 const ResetPassword: React.FC = () => {
@@ -11,6 +11,7 @@ const ResetPassword: React.FC = () => {
   const code = location.state?.code as string || '';
 
   const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,15 +83,23 @@ const ResetPassword: React.FC = () => {
               <Lock className="h-5 w-5 text-slate-400" />
             </div>
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               required
               minLength={8}
               disabled={isLoading}
-              className="input-field pl-10 disabled:opacity-50 disabled:bg-slate-50"
+              className="input-field pl-10 pr-10 disabled:opacity-50 disabled:bg-slate-50"
               placeholder="••••••••"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              disabled={isLoading}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 disabled:opacity-50"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
           </div>
           <p className="text-xs text-slate-500 mt-2">
             Must be at least 8 characters, contain one uppercase letter and one number.

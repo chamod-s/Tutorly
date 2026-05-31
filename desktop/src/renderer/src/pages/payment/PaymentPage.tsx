@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Lock, CreditCard, CheckCircle2, AlertCircle, Loader2, ExternalLink, Info } from 'lucide-react';
 import { apiClient } from '../../api/client';
@@ -23,6 +23,14 @@ const PaymentPage: React.FC = () => {
   const [step, setStep] = useState<'review' | 'processing' | 'success' | 'failed'>('review');
   const [orderId, setOrderId] = useState('');
   const [error, setError] = useState('');
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clean up polling timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, []);
 
   if (!state) {
     return (
@@ -44,19 +52,47 @@ const PaymentPage: React.FC = () => {
       const { orderId: oid, checkoutUrl, params } = res.data.data;
       setOrderId(oid);
 
-      // In production: redirect to PayHere checkout
-      // window.location.href = checkoutUrl + '?' + new URLSearchParams(params).toString();
+      // Construct PayHere checkout query URL
+      const queryParams = new URLSearchParams(params).toString();
+      const fullUrl = `${checkoutUrl}?${queryParams}`;
+      
+      // Open the PayHere checkout page in default system browser
+      window.open(fullUrl, '_blank');
 
-      // DEV SIMULATION — auto-succeed after 2s
-      console.log('[PayHere] Checkout URL:', checkoutUrl, params);
-      await new Promise(r => setTimeout(r, 2000));
+      // Start polling the backend for payment status
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const statusRes = await apiClient.get(`/payments/${oid}/status`);
+          const paymentStatus = statusRes.data.data.status;
+          
+          if (paymentStatus === 'SUCCESS') {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+            setStep('success');
+          } else if (paymentStatus === 'FAILED') {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+            setError('Payment transaction was marked as failed.');
+            setStep('failed');
+          }
+        } catch (pollErr) {
+          console.error('Error polling payment status:', pollErr);
+        }
+      }, 3000);
 
-      // Auto-enroll in DEV SIMULATION so enrollment exists in backend
-      await apiClient.post('/enrollments', { courseId });
-
-      setStep('success');
     } catch (err: unknown) {
       setError(err instanceof AxiosError ? (err.response?.data?.message || 'Payment initiation failed') : 'Network error');
+      setStep('failed');
+    }
+  };
+
+  // Helper to simulate webhook success (dev-mode bypass)
+  const handleSimulateSuccess = async () => {
+    try {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      // Directly enroll user as in previous DEV SIMULATION
+      await apiClient.post('/enrollments', { courseId });
+      setStep('success');
+    } catch (err: unknown) {
+      setError(err instanceof AxiosError ? (err.response?.data?.message || 'Dev simulation enrollment failed') : 'Network error');
       setStep('failed');
     }
   };
@@ -114,10 +150,27 @@ const PaymentPage: React.FC = () => {
   // ── Processing ────────────────────────────────────────────
   if (step === 'processing') {
     return (
-      <div className="max-w-lg mx-auto py-24 text-center">
-        <Loader2 className="w-12 h-12 text-teal-600 animate-spin mx-auto mb-6" />
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Processing your payment…</h2>
-        <p className="text-slate-500 text-sm">Please do not close this window.</p>
+      <div className="max-w-lg mx-auto py-20 px-4 text-center space-y-6">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-8 space-y-6">
+          <Loader2 className="w-12 h-12 text-teal-600 animate-spin mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900">Waiting for PayHere confirmation...</h2>
+          <div className="bg-slate-50 rounded-2xl p-5 text-sm text-slate-600 leading-relaxed text-left space-y-3">
+            <p>1. We have opened the <strong>PayHere Secure Checkout</strong> in your web browser.</p>
+            <p>2. Please complete the transaction in your browser (Cards, Mobile Wallets, or Internet Banking).</p>
+            <p>3. Do not close this app window. The dashboard will automatically update once the transaction succeeds.</p>
+          </div>
+          
+          {/* Dev-Mode Simulate Success Button */}
+          <div className="border-t border-slate-100 pt-6 space-y-3">
+            <p className="text-xs text-slate-400">Running in Development Mode? You can bypass the live PayHere webhook verification below:</p>
+            <button
+              onClick={handleSimulateSuccess}
+              className="w-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-sm py-2.5 rounded-xl font-semibold transition-colors"
+            >
+              Simulate Webhook Success (Dev Mode Bypass)
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

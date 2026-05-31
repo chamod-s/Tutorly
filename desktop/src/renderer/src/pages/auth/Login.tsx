@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { authService } from '../../api/auth.service';
-import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { AxiosError } from 'axios';
 
 const Login: React.FC = () => {
@@ -11,6 +11,7 @@ const Login: React.FC = () => {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -94,14 +95,22 @@ const Login: React.FC = () => {
               <Lock className="h-5 w-5 text-slate-400" />
             </div>
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               required
               disabled={isLoading}
-              className="input-field pl-10 disabled:opacity-50 disabled:bg-slate-50"
+              className="input-field pl-10 pr-10 disabled:opacity-50 disabled:bg-slate-50"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              disabled={isLoading}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 disabled:opacity-50"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
           </div>
         </div>
 
