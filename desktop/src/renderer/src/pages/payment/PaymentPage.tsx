@@ -23,6 +23,8 @@ const PaymentPage: React.FC = () => {
   const [step, setStep] = useState<'review' | 'processing' | 'success' | 'failed'>('review');
   const [orderId, setOrderId] = useState('');
   const [error, setError] = useState('');
+  const [testMode, setTestMode] = useState<'simulator' | 'portal'>('simulator');
+  const [isLoading, setIsLoading] = useState(false);
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clean up polling timer on unmount
@@ -47,6 +49,7 @@ const PaymentPage: React.FC = () => {
   const handlePay = async () => {
     setStep('processing');
     setError('');
+    setIsLoading(true);
     try {
       const res = await apiClient.post('/payments/initiate', { courseId });
       const { orderId: oid, checkoutUrl, params } = res.data.data;
@@ -68,10 +71,12 @@ const PaymentPage: React.FC = () => {
           if (paymentStatus === 'SUCCESS') {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
             setStep('success');
+            setIsLoading(false);
           } else if (paymentStatus === 'FAILED') {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
             setError('Payment transaction was marked as failed.');
             setStep('failed');
+            setIsLoading(false);
           }
         } catch (pollErr) {
           console.error('Error polling payment status:', pollErr);
@@ -81,6 +86,7 @@ const PaymentPage: React.FC = () => {
     } catch (err: unknown) {
       setError(err instanceof AxiosError ? (err.response?.data?.message || 'Payment initiation failed') : 'Network error');
       setStep('failed');
+      setIsLoading(false);
     }
   };
 
@@ -88,12 +94,69 @@ const PaymentPage: React.FC = () => {
   const handleSimulateSuccess = async () => {
     try {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-      // Directly enroll user as in previous DEV SIMULATION
-      await apiClient.post('/enrollments', { courseId });
+      if (!orderId) {
+        setError('No active order ID to simulate.');
+        setStep('failed');
+        return;
+      }
+      await apiClient.post('/payments/simulate-webhook', { orderId, status: 'SUCCESS' });
       setStep('success');
     } catch (err: unknown) {
       setError(err instanceof AxiosError ? (err.response?.data?.message || 'Dev simulation enrollment failed') : 'Network error');
       setStep('failed');
+    }
+  };
+
+  const handleSimulatePayment = async (status: 'SUCCESS' | 'FAILED') => {
+    setIsLoading(true);
+    setError('');
+    try {
+      // Step 1: Initiate payment to get orderId
+      const initiateRes = await apiClient.post('/payments/initiate', { courseId });
+      const { orderId: oid } = initiateRes.data.data;
+      setOrderId(oid);
+
+      setStep('processing');
+
+      // Step 2: Call simulation endpoint to simulate the webhook callback
+      await apiClient.post('/payments/simulate-webhook', { orderId: oid, status });
+
+      // Step 3: Start polling the status to simulate client detection
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        try {
+          const statusRes = await apiClient.get(`/payments/${oid}/status`);
+          const paymentStatus = statusRes.data.data.status;
+          attempts++;
+
+          if (paymentStatus === 'SUCCESS') {
+            clearInterval(interval);
+            setStep('success');
+            setIsLoading(false);
+          } else if (paymentStatus === 'FAILED') {
+            clearInterval(interval);
+            setError(status === 'FAILED' ? 'Simulated payment failure.' : 'Payment transaction failed.');
+            setStep('failed');
+            setIsLoading(false);
+          } else if (attempts > 10) {
+            clearInterval(interval);
+            if (status === 'SUCCESS') {
+              setStep('success');
+            } else {
+              setError('Webhook simulation timeout.');
+              setStep('failed');
+            }
+            setIsLoading(false);
+          }
+        } catch (pollErr) {
+          console.error('Error polling simulated status:', pollErr);
+        }
+      }, 1500);
+
+    } catch (err: unknown) {
+      setError(err instanceof AxiosError ? (err.response?.data?.message || 'Simulation failed') : 'Network error');
+      setStep('failed');
+      setIsLoading(false);
     }
   };
 
@@ -155,19 +218,19 @@ const PaymentPage: React.FC = () => {
           <Loader2 className="w-12 h-12 text-teal-600 animate-spin mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900">Waiting for PayHere confirmation...</h2>
           <div className="bg-slate-50 rounded-2xl p-5 text-sm text-slate-600 leading-relaxed text-left space-y-3">
-            <p>1. We have opened the <strong>PayHere Secure Checkout</strong> in your web browser.</p>
-            <p>2. Please complete the transaction in your browser (Cards, Mobile Wallets, or Internet Banking).</p>
+            <p>1. We have initiated the transaction and are awaiting verification.</p>
+            <p>2. If you opened the external PayHere Sandbox portal, please complete it there.</p>
             <p>3. Do not close this app window. The dashboard will automatically update once the transaction succeeds.</p>
           </div>
           
           {/* Dev-Mode Simulate Success Button */}
           <div className="border-t border-slate-100 pt-6 space-y-3">
-            <p className="text-xs text-slate-400">Running in Development Mode? You can bypass the live PayHere webhook verification below:</p>
+            <p className="text-xs text-slate-400">Running in Sandbox Mode? You can manually simulate the server-to-server webhook callback below:</p>
             <button
               onClick={handleSimulateSuccess}
               className="w-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-sm py-2.5 rounded-xl font-semibold transition-colors"
             >
-              Simulate Webhook Success (Dev Mode Bypass)
+              Simulate Webhook Success (Local API Callback)
             </button>
           </div>
         </div>
@@ -216,6 +279,64 @@ const PaymentPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Sandbox Testing Mode Selector */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-5">
+        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+          <Shield className="w-5 h-5 text-teal-600" />
+          PayHere Sandbox Testing Mode
+        </h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Select a method to test the payment process in this demo application.
+        </p>
+
+        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 mb-4">
+          <button
+            onClick={() => setTestMode('simulator')}
+            type="button"
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+              testMode === 'simulator'
+                ? 'bg-white text-teal-700 shadow-sm font-bold'
+                : 'text-slate-600 hover:text-slate-900 font-semibold'
+            }`}
+          >
+            Local Webhook Simulator
+          </button>
+          <button
+            onClick={() => setTestMode('portal')}
+            type="button"
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+              testMode === 'portal'
+                ? 'bg-white text-teal-700 shadow-sm font-bold'
+                : 'text-slate-600 hover:text-slate-900 font-semibold'
+            }`}
+          >
+            PayHere Sandbox Portal
+          </button>
+        </div>
+
+        {testMode === 'simulator' ? (
+          <div className="space-y-3">
+            <div className="bg-teal-50 border border-teal-100 rounded-xl p-3 text-xs text-teal-800 leading-relaxed flex gap-2">
+              <Info className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+              <span>
+                <strong>Recommended for Local Demo:</strong> Simulates the server-to-server webhook callback locally.
+                Tests signature validation, databases, enrollment records, and notifications.
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-800 leading-relaxed flex gap-2">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>
+                <strong>Portal Redirect:</strong> Opens PayHere's sandbox checkout in your browser.
+                Note that PayHere cannot deliver webhooks to localhost without a public HTTPS tunnel (like Ngrok).
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Security badges */}
       <div className="flex items-center justify-center gap-6 mb-6 text-xs text-slate-500">
         <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5 text-green-500" /> SSL Encrypted</span>
@@ -223,15 +344,45 @@ const PaymentPage: React.FC = () => {
         <span className="flex items-center gap-1"><ExternalLink className="w-3.5 h-3.5 text-slate-400" /> PayHere Verified</span>
       </div>
 
-      {/* Dev notice */}
-      <div className="flex gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl mb-5 text-xs text-amber-800">
-        <Info className="w-4 h-4 shrink-0 mt-0.5" />
-        <span><strong>Development Mode:</strong> Payment is simulated. In production, you will be redirected to PayHere's secure checkout.</span>
-      </div>
+      {testMode === 'simulator' ? (
+        <div className="flex gap-3">
+          <button
+            onClick={() => handleSimulatePayment('SUCCESS')}
+            disabled={isLoading}
+            className="flex-1 btn-primary py-4 text-base font-bold rounded-2xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5" /> Simulate Success
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => handleSimulatePayment('FAILED')}
+            disabled={isLoading}
+            className="border border-red-200 hover:bg-red-50 text-red-700 py-4 px-6 text-sm font-bold rounded-2xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+          >
+            Simulate Fail
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={handlePay}
+          disabled={isLoading}
+          className="w-full btn-primary py-4 text-base font-bold rounded-2xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow disabled:opacity-50"
+        >
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <>
+              <Lock className="w-5 h-5" /> Pay Rs. {price.toLocaleString()} Securely
+            </>
+          )}
+        </button>
+      )}
 
-      <button onClick={handlePay} className="w-full btn-primary py-4 text-base font-bold rounded-2xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow">
-        <Lock className="w-5 h-5" /> Pay Rs. {price.toLocaleString()} Securely
-      </button>
       <button onClick={() => navigate(-1)} className="w-full mt-3 text-sm text-slate-500 hover:text-slate-700 py-2">Cancel</button>
     </div>
   );

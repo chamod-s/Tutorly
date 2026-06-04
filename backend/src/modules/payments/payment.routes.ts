@@ -17,6 +17,7 @@ router.post(
 
 // ─── Student ──────────────────────────────────────────────────
 router.post('/initiate', authenticate, PaymentController.initiate);
+router.post('/simulate-webhook', authenticate, PaymentController.simulateWebhook);
 router.get('/my',        authenticate, PaymentController.myPayments);
 router.get('/:id/status', authenticate, PaymentController.getStatus);
 
