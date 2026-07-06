@@ -1,86 +1,39 @@
-Tutorly Running Process
+Tutorly Running Process (C# WPF & MySQL Native Desktop Application)
 
-This application is split into two main components:
+This application is a fully native desktop application built with C# and WPF (.NET 10.0), connecting directly to a local MySQL database managed via MySQL Workbench.
 
-Backend: A Node.js + Express + TypeScript + PostgreSQL backend using Prisma ORM.
-Desktop: An Electron + Vite + React desktop application.
 Prerequisites
 Before starting, ensure you have:
+1. .NET 10.0 SDK installed on your computer.
+2. MySQL Server and MySQL Workbench installed and running.
 
-Node.js (version >= 18.0.0) installed.
-PostgreSQL running locally or accessible via the connection string in your environment.
-Step 1: Set Up & Run the Backend
-Navigate to the backend directory:
+Step 1: Set Up the Database in MySQL Workbench
+1. Open MySQL Workbench.
+2. Connect to your local MySQL instance.
+3. Open a new Query Tab and run:
+   CREATE DATABASE tutorly;
+4. Set "tutorly" as your active database schema.
+5. Open and execute the schema.sql file located in the project root:
+   - File -> Open SQL Script... -> select "schema.sql" -> Run all statements (lightning bolt icon).
+6. Open and execute the seed.sql file located in the project root to insert test data:
+   - File -> Open SQL Script... -> select "seed.sql" -> Run all statements.
 
-bash
-cd backend
-Install backend dependencies:
+Step 2: Configure Database Credentials in C# (Optional)
+If your local MySQL username is NOT "root" or your password is NOT "CJS@12345":
+1. Open "desktop_native/Database/DatabaseHelper.cs" in any text editor.
+2. Update the connection string with your credentials:
+   private static readonly string ConnectionString = "Server=localhost;Port=3306;Database=tutorly;Uid=YOUR_USER;Pwd=YOUR_PASSWORD;AllowUserVariables=True;UseAffectedRows=True";
 
-bash
-npm install
-Configure Environment Variables: A configuration file is already set up at 
+Step 3: Run the Application
+1. Open a terminal (PowerShell or Command Prompt) and navigate to the project directory:
+   cd desktop_native
+2. Run the application using the .NET CLI:
+   dotnet run
 
-backend/.env
-. Ensure your PostgreSQL server credentials match the connection string configured there:
-
-env
-DATABASE_URL="postgresql://postgres:CJS@12345@localhost:5432/tutorly?schema=public"
-Initialize the Database (Prisma): Generate the Prisma Client and run migrations to create the database schema defined in 
-
-backend/prisma/schema.prisma
-:
-
-bash
-# Generate Prisma client
-npm run prisma:generate
-# Apply migrations to your database
-npm run prisma:migrate
-Seed the Database: Populate the database with sample courses and test accounts by running the seed script defined in 
-
-backend/prisma/seed.ts
-:
-
-bash
-npm run prisma:seed
-Start the Backend Dev Server: Start the Express server on port 5000:
-
-bash
-npm run dev
-Step 2: Set Up & Run the Desktop App
-Open a new terminal window/tab and navigate to the desktop directory:
-
-bash
-cd desktop
-Install desktop dependencies:
-
-bash
-npm install
-Start the Electron app in development mode: This starts the Vite preview server and launches the Electron application window:
-
-bash
-npm run dev
 Default Test Login Credentials
-Once the database is seeded, you can log in to the desktop application using any of the following accounts:
+You can log in to the native application using any of the following accounts:
 
-Role	Email	Password
-Admin	admin@tutorly.lk	Admin@123
-Teacher	teacher@tutorly.lk	Teacher@123
-Student	student@tutorly.lk	Student@123
-Summary of Work
-Explored the project structure and identified the backend and desktop components.
-Analyzed 
-
-backend/package.json
- and 
-
-desktop/package.json
- to retrieve the proper run and build scripts.
-Examined 
-
-backend/.env
- to check database configuration and connectivity.
-Checked 
-
-backend/prisma/seed.ts
- to find setup roles and default credentials.
-Provided step-by-step instructions for installing dependencies, migrating/seeding the database, and running both projects.
+Role      Email              Password
+Admin     admin@tutorly.lk   Admin@123
+Teacher   teacher@tutorly.lk Teacher@123
+Student   student@tutorly.lk Student@123
